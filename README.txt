@@ -15,6 +15,16 @@ Installation
   entfernen", Windows "Apps & Features" oder das Setup erneut starten. Alle Originaldateien
   werden wiederhergestellt; Spielstände und Highscores (Database.tdb) bleiben unangetastet.
 
+Starten - empfohlen: über den HD Launcher
+  Am besten Ballance immer über "Ballance - HD Launcher" starten (A / Kreuz oder Start am
+  Controller startet das Spiel). Dort werden Auflösung, Bildschirm, Anzeigemodus,
+  Kantenglättung, Bildrate und Spielsprache eingestellt.
+  Startet man das Spiel direkt (GOG Galaxy "Spielen", GOG-Desktopverknüpfung, Bin\Player.exe),
+  läuft es trotzdem vollständig in HD mit Controller - mit den zuletzt im Launcher gespeicherten
+  Einstellungen. Controller-Einstellungen gibt es auch im Spiel (Optionen -> Steuerung).
+  Hinweis: Das GOG-Werkzeug "Ballance Language Selection" wirkt mit dem neuen Player nicht mehr;
+  die Spielsprache wird im Launcher (Seite "Spiel") eingestellt.
+
 Was der Patch macht
   * Neue Spiel-EXE "BallancePlayer" (doyaGu): 32-Bit-Farben, beliebige Auflösungen bis 4K und
     höher, randloses Vollbild, keine Registry, keine Windows-98-Kompatibilitätsmodi.
@@ -34,7 +44,7 @@ Was der Patch macht
 
 Controller (Xbox, DualShock 4, DualSense - USB oder Bluetooth)
   Das Plugin liest die Controller direkt im Spiel - PlayStation-Controller ohne Steam oder
-  DS4Windows. Ballance kann damit auch direkt (z. B. über GOG Galaxy) gestartet werden.
+  DS4Windows. Das funktioniert auch, wenn das Spiel direkt (z. B. über GOG Galaxy) gestartet wird.
     Linker Stick                      Kugel STUFENLOS rollen (Richtung und Kraft), Menüs
     Steuerkreuz                       Menüs, Rollen wie mit den Pfeiltasten
     Rechter Stick                     Kamera frei um die Kugel drehen und neigen - feste Distanz
@@ -73,6 +83,15 @@ Installation
   keeps your settings and button layout and removes the old mod loader.
   Uninstall: start menu "Ballance - Remove HD Patch", launcher -> About, Apps & Features, or run
   the setup again. All original files are restored; save games / high scores are never touched.
+
+Starting - recommended: through the HD Launcher
+  Best always start Ballance with "Ballance - HD Launcher" (A / Cross or Start on the controller
+  starts the game); resolution, display, display mode, anti-aliasing, frame rate and game
+  language are set there. Started directly (GOG Galaxy "Play", the GOG desktop shortcut,
+  Bin\Player.exe) the game still runs fully in HD with the controller, using the settings last
+  saved in the launcher; controller settings are also in the game (Options -> Controls).
+  Note: GOG's "Ballance Language Selection" tool no longer has any effect with the new player;
+  set the game language in the launcher ("Game" page).
 
 What it does
   * BallancePlayer (doyaGu): 32-bit colour, any resolution, borderless fullscreen.
