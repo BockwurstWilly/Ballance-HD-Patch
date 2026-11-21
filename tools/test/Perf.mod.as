@@ -1,38 +1,25 @@
-[bml.mod id="compiware.perf" name="Perf" version="0.0.2" author="test" bml="0.3.14"]
-// test only: frame time statistics every 5 seconds, camera distance to the ball, ball speed
+[bml.mod id="compiware.perf" name="Perf" version="0.0.3" author="test" bml="0.3.14"]
+// test only: frame time distribution every 5 seconds (ms): avg, p50, p95, p99, max, frames over 1.5x the median
 class Perf {
-    float acc = 0, mx = 0;
-    int n = 0, spikes = 0;
-    float dMin = 9999, dMax = 0, vMax = 0;
-    VxVector lastBall;
+    array<float> times;
+    float acc = 0;
 
     void OnProcess(const BML::ModContext &in ctx) {
         float dt = ImGui::GetIO().DeltaTime;
         if (dt <= 0) return;
-        acc += dt; n++;
-        if (dt > mx) mx = dt;
-        if (dt > 0.025f) spikes++;
-        CK3dEntity@ cam = ctx.BorrowTargetCameraByName("InGameCam");
-        CK3dEntity@ t = ctx.Borrow3dEntityByName("Cam_Target");
-        CK3dEntity@ b = ctx.Borrow3dEntityByName("Ball_Pos_Frame");
-        if (ctx.IsInLevel && cam !is null && t !is null) {
-            VxVector a, c;
-            cam.GetPosition(a, null);
-            t.GetPosition(c, null);
-            float d = sqrt((a.x - c.x) * (a.x - c.x) + (a.y - c.y) * (a.y - c.y) + (a.z - c.z) * (a.z - c.z));
-            if (d < dMin) dMin = d;
-            if (d > dMax) dMax = d;
-        }
-        if (ctx.IsInLevel && b !is null) {
-            VxVector p;
-            b.GetPosition(p, null);
-            float v = sqrt((p.x - lastBall.x) * (p.x - lastBall.x) + (p.z - lastBall.z) * (p.z - lastBall.z)) / dt;
-            if (v > vMax && v < 500) vMax = v;
-            lastBall = p;
-        }
-        if (acc >= 2.5f) {
-            ctx.LogInfo("PERF inLevel=" + ctx.IsInLevel + " avg=" + (acc / n * 1000) + "ms max=" + (mx * 1000) + "ms spikes=" + spikes + " camDist=" + dMin + ".." + dMax + " ballSpeedMax=" + vMax);
-            acc = 0; mx = 0; n = 0; spikes = 0; dMin = 9999; dMax = 0; vMax = 0;
-        }
+        times.insertLast(dt * 1000);
+        acc += dt;
+        if (acc < 5.0f) return;
+        array<float> s = times;
+        s.sortAsc();
+        uint n = s.length();
+        float sum = 0;
+        for (uint i = 0; i < n; i++) sum += s[i];
+        float p50 = s[n / 2];
+        int hitches = 0;
+        for (uint i = 0; i < n; i++) if (s[i] > p50 * 1.5f) hitches++;
+        ctx.LogInfo("PERF inLevel=" + ctx.IsInLevel + " n=" + n + " avg=" + (sum / n) + " p50=" + p50 + " p95=" + s[n * 95 / 100] + " p99=" + s[n * 99 / 100] + " max=" + s[n - 1] + " hitches=" + hitches);
+        times.resize(0);
+        acc = 0;
     }
 }

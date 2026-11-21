@@ -302,10 +302,17 @@ namespace BallanceHD
             return new Size2(Width, Height);
         }
 
+        /// <summary>
+        /// Automatic in a window / borderless: VSync (BML+ "SetMaxFrameRate 0"; measured: an even 16.67 ms at 60 Hz,
+        /// while its 60 fps limiter gives 17.3 ms frames = 57.5 fps = a repeated frame every 0.4 s, micro-stutter).
+        /// The game runs at the same speed at any frame rate (measured 30 / 60 / 97 fps), so VSync at 48 or 144 Hz
+        /// is fine. Exclusive fullscreen has no working VSync under Direct3D 8: there the limiter at the refresh rate.
+        /// </summary>
+        public bool UsesVSync { get { return Fps < 0 && Mode != "fullscreen"; } }
+
         public int EffectiveFps(DisplayInfo d)
         {
-            // automatic: the refresh rate, but never below the 60 fps the game was made for (laptop panels drop to 48 Hz)
-            return Fps < 0 ? Math.Max(d.Hz, 60) : Fps;
+            return Fps < 0 ? d.Hz : Fps;
         }
 
         public void Save(string dir)
@@ -370,8 +377,8 @@ namespace BallanceHD
             var bml = BmlCfg.Load(Path.Combine(dir, Game.BmlCfgPath));
             int fps = EffectiveFps(d);
             bml.SetBool("Graphics", "WidescreenFix", Widescreen);
-            bml.SetBool("Graphics", "UnlockFrameRate", fps == 0);
-            bml.SetInt("Graphics", "SetMaxFrameRate", fps == 0 ? 240 : fps);
+            bml.SetBool("Graphics", "UnlockFrameRate", !UsesVSync && fps == 0);
+            bml.SetInt("Graphics", "SetMaxFrameRate", UsesVSync ? 0 : fps == 0 ? 240 : fps);
             bml.SetBool("HUD", "ShowTitle", ShowTitle);
             bml.SetBool("HUD", "ShowFPS", ShowFps);
             bml.SetBool("Tweak", "FixLifeBallFreeze", LifeBallFix);

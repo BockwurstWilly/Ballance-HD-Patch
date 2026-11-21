@@ -5,7 +5,7 @@ namespace BallanceHD
 {
     static class Version
     {
-        public const string Text = "1.3.1";
+        public const string Text = "1.3.2";
         public const string BallancePlayer = "0.3.9";
         public const string BmlPlus = "0.3.14";
     }
@@ -72,7 +72,7 @@ namespace BallanceHD
             { "gfx_aa", new[] { "Kantenglättung", "Anti-aliasing" } },
             { "gfx_off", new[] { "Aus", "Off" } },
             { "gfx_fps", new[] { "Bildrate", "Frame rate" } },
-            { "gfx_fps_auto", new[] { "Automatisch ({0} FPS)", "Automatic ({0} FPS)" } },
+            { "gfx_fps_auto", new[] { "Automatisch (VSync, {0} Hz)", "Automatic (VSync, {0} Hz)" } },
             { "gfx_fps_n", new[] { "{0} FPS", "{0} FPS" } },
             { "gfx_fps_off", new[] { "Unbegrenzt", "Unlimited" } },
             { "gfx_wide", new[] { "Breitbild ohne Ränder (16:9, 21:9 …)", "Widescreen without bars (16:9, 21:9 …)" } },
@@ -172,7 +172,7 @@ namespace BallanceHD
             { "log_copy", new[] { "kopiert: {0}", "copied: {0}" } },
             { "log_keep", new[] { "behalten: {0}", "kept: {0}" } },
             { "log_aside", new[] { "deaktiviert: {0} (dgVoodoo – stört die Darstellung)", "disabled: {0} (dgVoodoo – breaks rendering)" } },
-            { "log_settings", new[] { "Grafik eingestellt: {0} × {1}, {2} FPS, randlos", "Graphics set: {0} × {1}, {2} fps, borderless" } },
+            { "log_settings", new[] { "Grafik eingestellt: {0} × {1}, {2} Hz mit VSync, randlos", "Graphics set: {0} × {1}, {2} Hz with vsync, borderless" } },
             { "log_shortcuts", new[] { "Verknüpfungen angelegt.", "Shortcuts created." } },
             { "log_done", new[] { "Fertig.", "Done." } },
             { "log_vcrt", new[] { "Installiere Microsoft Visual C++ 2015–2022 (x86) …", "Installing Microsoft Visual C++ 2015–2022 (x86) …" } },

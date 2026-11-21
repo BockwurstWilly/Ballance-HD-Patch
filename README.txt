@@ -1,4 +1,4 @@
-Ballance - HD Patch 1.3.1
+Ballance - HD Patch 1.3.2
 =========================
 
 DEUTSCH
@@ -24,8 +24,8 @@ Was der Patch macht
     füllt den ganzen 16:9-/21:9-Bildschirm, ohne schwarze Ränder links und rechts.
   * 32-Bit-Texturen statt 16 Bit (kein Farbbanding am Himmel), Kantenglättung bis 8x MSAA.
   * Randloses Vollbild in nativer Auflösung (empfohlen): kein Tearing, Alt+Tab ohne Flackern,
-    Bildrate automatisch = Bildwiederholrate des Bildschirms. VSync wirkt bei Direct3D 8 unter
-    Windows 10/11 im exklusiven Vollbild nicht - deshalb ist randlos die Voreinstellung.
+    Bildrate automatisch = VSync mit der Bildwiederholrate des Bildschirms (gleichmäßige Bilder,
+    keine Mikroruckler). Im exklusiven Vollbild wirkt VSync unter Direct3D 8 nicht - deshalb randlos.
   * Kein "DirectPlay installieren?"-Fenster mehr beim Start (das Spiel lädt dpnhpast.dll nur
     zur DirectX-Versionsprüfung; der Patch legt dafür eine leere DLL in den Ordner Bin).
   * dgVoodoo 2.79 (von GOG/Steam mitgeliefert) wird abgeschaltet: mit dem neuen Player zeichnet

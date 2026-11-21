@@ -1,6 +1,6 @@
 [bml.mod id="compiware.ballancehd"
          name="Ballance HD"
-         version="1.3.1"
+         version="1.3.2"
          author="CompiWare / BockwurstWilly"
          description="Widescreen without bars; controller: stepless rolling, third-person camera, button prompts, settings in Options - Controls"
          bml="0.3.14"]
@@ -78,6 +78,45 @@ class BallanceHD {
     int lastCam = 0, lastW = 0, lastH = 0;
 
     string T(const string &in de, const string &in en) { return german ? de : en; }
+
+    // ---- object lookups ----
+    // A lookup by name walks through all of the engine's objects (tens of thousands): far too slow for every
+    // frame. The id is kept instead (checked by name, ids are reused after a level is unloaded); a name not
+    // found is looked for again only every second.
+    dictionary ids;
+    dictionary missUntil;
+
+    CKObject@ Find(const BML::ModContext &in ctx, const string &in name, int kind) {
+        CKContext@ ck = ctx.BorrowCKContext();
+        if (ck is null)
+            return null;
+        CK_ID id = 0;
+        if (ids.get(name, id)) {
+            CKObject@ o = ck.GetObject(id);
+            if (o !is null && BML::CK::GetName(o) == name)
+                return o;
+            ids.delete(name);
+        }
+        int until = 0;
+        if (missUntil.get(name, until) && frame < until)
+            return null;
+        CKObject@ o;
+        if (kind == 2)
+            @o = ctx.Borrow2dEntityByName(name);
+        else if (kind == 3)
+            @o = ctx.BorrowTargetCameraByName(name);
+        else
+            @o = ctx.Borrow3dEntityByName(name);
+        if (o is null) {
+            missUntil.set(name, frame + 60);
+            return null;
+        }
+        ids.set(name, o.GetID());
+        return o;
+    }
+
+    CK3dEntity@ E3(const BML::ModContext &in ctx, const string &in name) { return cast<CK3dEntity>(Find(ctx, name, 1)); }
+    CK2dEntity@ E2(const BML::ModContext &in ctx, const string &in name) { return cast<CK2dEntity>(Find(ctx, name, 2)); }
     int Clamp(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
     float Max(float a, float b) { return a > b ? a : b; }
     float Min(float a, float b) { return a < b ? a : b; }
@@ -160,6 +199,9 @@ class BallanceHD {
             forceActive = false;
             camInit = false;
             promptState = -1;
+            legendArmed = true;          // the controls legend: once per level start
+            ids.deleteAll();             // the level's objects are new
+            missUntil.deleteAll();
         }
     }
 
@@ -286,7 +328,7 @@ class BallanceHD {
     }
 
     CK3dEntity@ Ball(const BML::ModContext &in ctx) {
-        CK3dEntity@ f = ctx.Borrow3dEntityByName("Ball_Pos_Frame");
+        CK3dEntity@ f = E3(ctx, "Ball_Pos_Frame");
         return f is null ? null : BML::CK::BorrowParent(f);
     }
 
@@ -362,7 +404,7 @@ class BallanceHD {
         if (!change || (forceActive && framesSinceSet < 5))
             return;
         CK3dEntity@ ball = Ball(ctx);
-        CK3dEntity@ oref = ctx.Borrow3dEntityByName("Cam_OrientRef");
+        CK3dEntity@ oref = E3(ctx, "Cam_OrientRef");
         if (ball is null || oref is null)
             return;
         // through the centre of the ball (position 0,0,0 relative to the ball, like the game's own force:
@@ -387,11 +429,11 @@ class BallanceHD {
         if (!freeCamera || !playing || !PadOk()) {
             return;
         }
-        CK3dEntity@ oref = ctx.Borrow3dEntityByName("Cam_OrientRef");
-        CK3dEntity@ orient = ctx.Borrow3dEntityByName("Cam_Orient");
-        CK3dEntity@ pos = ctx.Borrow3dEntityByName("Cam_Pos");
-        CK3dEntity@ target = ctx.Borrow3dEntityByName("Cam_Target");
-        CK3dEntity@ cam = ctx.BorrowTargetCameraByName("InGameCam");
+        CK3dEntity@ oref = E3(ctx, "Cam_OrientRef");
+        CK3dEntity@ orient = E3(ctx, "Cam_Orient");
+        CK3dEntity@ pos = E3(ctx, "Cam_Pos");
+        CK3dEntity@ target = E3(ctx, "Cam_Target");
+        CK3dEntity@ cam = cast<CK3dEntity>(Find(ctx, "InGameCam", 3));
         if (oref is null || orient is null || pos is null || target is null)
             return;
         if (!camInit) {
@@ -484,7 +526,7 @@ class BallanceHD {
     }
 
     void ControlsPanel(const BML::ModContext &in ctx, bool inMenu) {
-        CK2dEntity@ title = ctx.Borrow2dEntityByName("M_Opt_Keys_Title");
+        CK2dEntity@ title = E2(ctx, "M_Opt_Keys_Title");
         onControls = inMenu && title !is null && BML::CK::IsVisible(title);
         if (!onControls) {
             panelFocus = false;
@@ -680,6 +722,11 @@ class BallanceHD {
         dl.AddRectFilled(ImVec2(x0, y0), ImVec2(x1, y1), ImGui::ColorConvertFloat4ToU32(ImVec4(0.05f, 0.06f, 0.10f, 0.62f * alpha)), 10.0f);
     }
 
+    bool legendArmed = false;
+    float legendTime = 999.0f;
+
+    float Fade(float t) { return t < 10.0f ? 1.0f : 1.0f - (t - 10.0f) / 2.0f; }
+
     void DrawPrompts(const BML::ModContext &in ctx) {
         ImGuiIO@ io = ImGui::GetIO();
         ImVec2 screen = io.DisplaySize;
@@ -688,34 +735,32 @@ class BallanceHD {
         bool inLevel = ctx.IsInLevel;
         bool paused = ctx.IsPaused;
         int state = !inLevel ? 0 : paused ? 1 : 2;
-        // menus: only while the game's menu column is on screen (M_BlackScreen) - not on the loading screens
-        // before the menu or a level; in a level: once the level camera has taken over
+        // menus: only while the game's menu column (M_BlackScreen) is on screen - not on the loading screens;
+        // in a level: once the level camera has taken over
         bool visible;
         if (state == 2) {
             CKRenderContext@ rc = ctx.BorrowRenderContext();
             CKCamera@ ac = rc is null ? null : rc.GetAttachedCamera();
             visible = ac !is null && BML::CK::GetName(ac) == "InGameCam";
         } else {
-            CK2dEntity@ column = ctx.Borrow2dEntityByName("M_BlackScreen");
+            CK2dEntity@ column = E2(ctx, "M_BlackScreen");
             visible = column !is null && BML::CK::IsVisible(column);
         }
         int show = visible ? state : -1;
-        if (show != promptCam) {
+        if (show != promptCam || pad != lastPad) {
             promptCam = show;
-            promptState = -1;
-        }
-        if (!visible)
-            return;
-        if (state != promptState || pad != lastPad) {
-            promptState = state;
             lastPad = pad;
-            promptTime = 0.0f;
+            promptTime = 0.0f;           // the menu bar: again with every menu / pause / controller change
         }
         if (state != 2 && (ActionPressed(0) || ActionPressed(1)))
             promptTime = 0.0f;
         promptTime += dt;
-        float alpha = promptTime < 10.0f ? 1.0f : 1.0f - (promptTime - 10.0f) / 2.0f;
-        if (alpha <= 0.0f)
+        if (state == 2 && visible && legendArmed) {
+            legendArmed = false;
+            legendTime = 0.0f;
+        }
+        legendTime += dt;
+        if (!visible)
             return;
 
         ImDrawList@ dl = ImGui::GetForegroundDrawList();
@@ -724,6 +769,9 @@ class BallanceHD {
         float margin = screen.y * 0.028f;
 
         if (state != 2) {
+            float alpha = Fade(promptTime);
+            if (alpha <= 0.0f)
+                return;
             // navigation: bottom right, between the menu column and the screen edge, scaled to fit there
             array<string> keys = { "dpad", Glyph(0), Glyph(1) };
             array<string> labels = { T("Auswählen", "Select"), T("Bestätigen", "Confirm"), T("Zurück", "Back") };
@@ -738,66 +786,70 @@ class BallanceHD {
             ImGui::PushFont(font, gs * 0.52f);
             float rw = RowWidth(keys, labels, gs, gap);
             float x = screen.x - margin - gap * 0.6f - rw;
+            // in a level the lives sit bottom right: stay above them
             float y = (state == 1 ? screen.y * 0.80f : screen.y - margin) - gs;
             Panel(dl, x - gap * 0.6f, y - gap * 0.4f, x + rw + gap * 0.6f, y + gs + gap * 0.4f, alpha);
             DrawRow(ctx, dl, x, y, keys, labels, gs, gap, alpha);
             ImGui::PopFont();
+            return;
         }
 
-        if (state != 0) {
-            array<string> keys;
-            array<string> labels;
-            keys.insertLast("lstick");
-            labels.insertLast(analogRoll ? T("Rollen (stufenlos)", "Roll (stepless)") : T("Rollen", "Roll"));
-            if (freeCamera) {
-                keys.insertLast("rstick");
-                labels.insertLast(T("Kamera drehen / neigen", "Turn / tilt the camera"));
-            }
-            string turn = Glyph(4) + (Glyph(5) != "" ? (Glyph(4) != "" ? "+" : "") + Glyph(5) : "");
-            if (!freeCamera)
-                turn = "rstick_lr" + (turn != "" ? "+" + turn : "");
-            if (turn != "") {
-                keys.insertLast(turn);
-                labels.insertLast(T("Kamera 90° drehen", "Turn camera 90°"));
-            }
-            string lift = Glyph(3);
-            if (!freeCamera)
-                lift = "rstick_up" + (lift != "" ? "+" + lift : "");
-            if (lift != "") {
-                keys.insertLast(lift);
-                labels.insertLast(T("Kamera anheben", "Raise camera"));
-            }
-            if (freeCamera && Glyph(8) != "") {
-                keys.insertLast(Glyph(8));
-                labels.insertLast(T("Kameraabstand", "Camera distance"));
-            }
-            if (Glyph(2) != "") {
-                keys.insertLast(Glyph(2));
-                labels.insertLast(T("Pause", "Pause"));
-            }
-            if (tutorialLevel && state == 2 && Glyph(6) != "") {
-                keys.insertLast(Glyph(6));
-                labels.insertLast(T("Einführung überspringen", "Skip tutorial"));
-            }
-            float lg = g * 0.9f;
-            float gap = lg * 0.5f;
-            ImGui::PushFont(font, lg * 0.52f);
-            float colW = 0.0f;
-            for (uint i = 0; i < keys.length(); i++) {
-                array<string> k = { keys[i] };
-                array<string> l = { labels[i] };
-                colW = Max(colW, RowWidth(k, l, lg, gap));
-            }
-            float x = margin;
-            float y = margin;
-            Panel(dl, x - gap * 0.4f, y - gap * 0.4f, x + colW + gap * 0.4f, y + keys.length() * (lg + gap * 0.35f) + gap * 0.1f, alpha);
-            for (uint i = 0; i < keys.length(); i++) {
-                array<string> k = { keys[i] };
-                array<string> l = { labels[i] };
-                DrawRow(ctx, dl, x, y, k, l, lg, gap, alpha);
-                y += lg + gap * 0.35f;
-            }
-            ImGui::PopFont();
+        // the controls legend: top left, once at the start of a level
+        float alpha = Fade(legendTime);
+        if (alpha <= 0.0f)
+            return;
+        array<string> keys;
+        array<string> labels;
+        keys.insertLast("lstick");
+        labels.insertLast(analogRoll ? T("Rollen (stufenlos)", "Roll (stepless)") : T("Rollen", "Roll"));
+        if (freeCamera) {
+            keys.insertLast("rstick");
+            labels.insertLast(T("Kamera drehen / neigen", "Turn / tilt the camera"));
         }
+        string turn = Glyph(4) + (Glyph(5) != "" ? (Glyph(4) != "" ? "+" : "") + Glyph(5) : "");
+        if (!freeCamera)
+            turn = "rstick_lr" + (turn != "" ? "+" + turn : "");
+        if (turn != "") {
+            keys.insertLast(turn);
+            labels.insertLast(T("Kamera 90° drehen", "Turn camera 90°"));
+        }
+        string lift = Glyph(3);
+        if (!freeCamera)
+            lift = "rstick_up" + (lift != "" ? "+" + lift : "");
+        if (lift != "") {
+            keys.insertLast(lift);
+            labels.insertLast(T("Kamera anheben", "Raise camera"));
+        }
+        if (freeCamera && Glyph(8) != "") {
+            keys.insertLast(Glyph(8));
+            labels.insertLast(T("Kameraabstand", "Camera distance"));
+        }
+        if (Glyph(2) != "") {
+            keys.insertLast(Glyph(2));
+            labels.insertLast(T("Pause", "Pause"));
+        }
+        if (tutorialLevel && Glyph(6) != "") {
+            keys.insertLast(Glyph(6));
+            labels.insertLast(T("Einführung überspringen", "Skip tutorial"));
+        }
+        float lg = g * 0.9f;
+        float gap = lg * 0.5f;
+        ImGui::PushFont(font, lg * 0.52f);
+        float colW = 0.0f;
+        for (uint i = 0; i < keys.length(); i++) {
+            array<string> k = { keys[i] };
+            array<string> l = { labels[i] };
+            colW = Max(colW, RowWidth(k, l, lg, gap));
+        }
+        float x = margin;
+        float y = margin;
+        Panel(dl, x - gap * 0.4f, y - gap * 0.4f, x + colW + gap * 0.4f, y + keys.length() * (lg + gap * 0.35f) + gap * 0.1f, alpha);
+        for (uint i = 0; i < keys.length(); i++) {
+            array<string> k = { keys[i] };
+            array<string> l = { labels[i] };
+            DrawRow(ctx, dl, x, y, k, l, lg, gap, alpha);
+            y += lg + gap * 0.35f;
+        }
+        ImGui::PopFont();
     }
 }

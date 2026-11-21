@@ -297,7 +297,7 @@ namespace BallanceHD
             int keep = cbFps.SelectedIndex >= 0 ? FpsValues[cbFps.SelectedIndex] : s.Fps;
             cbFps.Items.Clear();
             foreach (var v in FpsValues)
-                cbFps.Items.Add(v < 0 ? T.Get("gfx_fps_auto", Math.Max(CurrentDisplay().Hz, 60)) : v == 0 ? T.Get("gfx_fps_off") : T.Get("gfx_fps_n", v));
+                cbFps.Items.Add(v < 0 ? T.Get("gfx_fps_auto", CurrentDisplay().Hz) : v == 0 ? T.Get("gfx_fps_off") : T.Get("gfx_fps_n", v));
             int i = Array.IndexOf(FpsValues, keep);
             cbFps.SelectedIndex = i >= 0 ? i : 0;
         }
