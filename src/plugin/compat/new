@@ -1,0 +1,8 @@
+// Minimal <new> for building without a C++ standard library (no exceptions, no STL in the plugin).
+#pragma once
+#include <stddef.h>
+namespace std { typedef ::size_t size_t; struct nothrow_t { explicit nothrow_t() = default; }; extern const nothrow_t nothrow; }
+inline void *operator new(size_t, void *where) noexcept { return where; }
+inline void *operator new[](size_t, void *where) noexcept { return where; }
+inline void operator delete(void *, void *) noexcept {}
+inline void operator delete[](void *, void *) noexcept {}

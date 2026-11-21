@@ -1,0 +1,3 @@
+// Minimal <algorithm> (the SDK only needs <utility> through it).
+#pragma once
+#include <utility>

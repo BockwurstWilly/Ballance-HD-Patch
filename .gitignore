@@ -11,3 +11,6 @@ tools/test/*.exe
 # Microsoft runtime: downloaded by build.ps1, not kept in the repository
 payload/vc_redist.x86.exe
 tools/test/*.bin
+
+# build tools fetched locally (compiler, Virtools SDK - not redistributed)
+Werkzeuge/
