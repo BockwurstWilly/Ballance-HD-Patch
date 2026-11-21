@@ -1,4 +1,4 @@
-// Test harness (not shipped): feeds synthetic controller states into the real Bridge against a running game,
+﻿// Test harness (not shipped): feeds synthetic controller states into the real Bridge against a running game,
 // and checks the PlayStation report parser with hand-made reports.
 //   BridgeTest.exe parse
 //   BridgeTest.exe drive <gamePid> <shotExe> <outDir>
@@ -53,7 +53,7 @@ namespace BallanceHD
 
             // drive: synthetic states through the real Bridge (it only sends keys while the game is in front)
             var game = Process.GetProcessById(int.Parse(a[1]));
-            var bridge = new Bridge(game, 35);
+            var bridge = new Bridge(game, ".", 35);
             var update = typeof(Bridge).GetMethod("Update", BindingFlags.NonPublic | BindingFlags.Instance);
             var lastField = typeof(Bridge).GetField("last", BindingFlags.NonPublic | BindingFlags.Instance);
             Action<PadState, int, string> hold = (st, ms, shot) =>
@@ -97,3 +97,4 @@ namespace BallanceHD
         }
     }
 }
+

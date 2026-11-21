@@ -8,8 +8,6 @@ namespace BallanceHD
 {
     class SetupForm : Form
     {
-        const string VcRuntimeUrl = "https://aka.ms/vs/17/release/vc_redist.x86.exe";
-
         readonly TextBox path = new TextBox();
         readonly Label checkText = Theme.Label("");
         readonly CheckBox chkDesktop = Theme.Check(T.Get("su_desktop"));
@@ -19,7 +17,6 @@ namespace BallanceHD
         readonly RetroButton btnUninstall = Theme.Button(T.Get("su_uninstall"));
         readonly RetroButton btnClose = Theme.Button(T.Get("btn_close"));
         readonly RetroButton btnLaunch = Theme.Button(T.Get("su_launch"), true);
-        readonly RetroButton btnVc = Theme.Button(T.Get("su_vcrt_btn"));
         Bitmap banner;
         string bannerDir;
 
@@ -58,12 +55,9 @@ namespace BallanceHD
             Controls.Add(browse);
 
             checkText.Location = new Point(20, y + 56);
-            checkText.MaximumSize = new Size(530, 0);
+            checkText.MaximumSize = new Size(720, 0);
             Controls.Add(checkText);
-            btnVc.Bounds = new Rectangle(560, y + 56, 180, 28);
-            btnVc.Visible = false;
-            btnVc.Click += (o, e) => { try { Process.Start(VcRuntimeUrl); } catch (Exception) { } };
-            Controls.Add(btnVc);
+
 
             y += 132;
             chkDesktop.Checked = true;
@@ -134,7 +128,6 @@ namespace BallanceHD
                 bannerDir = Dir;
                 Invalidate(true);
             }
-            btnVc.Visible = false;
             if (!c.Ok)
             {
                 checkText.ForeColor = Theme.Warn;
@@ -150,11 +143,7 @@ namespace BallanceHD
                     warn = true;
                 }
                 if (!c.VcRuntime)
-                {
-                    lines += "\n" + T.Get("chk_vcrt");
-                    btnVc.Visible = true;
-                    warn = true;
-                }
+                    lines += "\n" + T.Get("chk_vcrt_bundled");
                 checkText.ForeColor = warn ? Theme.Warn : Theme.Good;
                 checkText.Text = lines;
             }

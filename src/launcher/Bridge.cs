@@ -22,6 +22,7 @@ namespace BallanceHD
         const ushort KShift = 0x2A, KSpace = 0x39, KEnter = 0x1C, KEsc = 0x01, KQ = 0x10, KR = 0x13;
 
         readonly Process game;
+        readonly string gameDir;
         readonly int deadzone;     // 0..32767
         readonly bool[] down = new bool[0x200];
         PadState last;
@@ -30,9 +31,10 @@ namespace BallanceHD
         DateTime camNext;
         int camDir;                // direction the right stick currently pushes (-1, 0, 1); a push rotates once
 
-        public Bridge(Process game, int deadzonePercent)
+        public Bridge(Process game, string dir, int deadzonePercent)
         {
             this.game = game;
+            gameDir = dir;
             deadzone = 32767 * deadzonePercent / 100;
         }
 
@@ -104,9 +106,16 @@ namespace BallanceHD
             timeBeginPeriod(1);
             try
             {
+                var kind = (PadKind)(-1);
                 while (!game.HasExited)
                 {
                     var s = pads.Poll();
+                    if (pads.Kind != kind)
+                    {
+                        // tells the game mod which button prompts to show
+                        kind = pads.Kind;
+                        PadMarker.SetPad(gameDir, kind);
+                    }
                     if (GameInFront())
                         Update(s);
                     else
@@ -118,6 +127,7 @@ namespace BallanceHD
             finally
             {
                 ReleaseAll();
+                PadMarker.SetPad(gameDir, PadKind.None);
                 timeEndPeriod(1);
             }
         }

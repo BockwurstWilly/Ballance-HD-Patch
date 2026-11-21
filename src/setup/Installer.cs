@@ -72,6 +72,10 @@ namespace BallanceHD
             state.Set("Install", "Version", Version.Text);
             state.Save();
 
+            // 0. the Visual C++ runtime BML+ needs (shipped with the setup, installed only when missing)
+            if (!Game.HasVcRuntime())
+                InstallVcRuntime();
+
             // 1. originals: back up what is changed, move away what breaks the picture
             //    (only on the first install: on an update these files are already the patch's own)
             if (!update)
@@ -98,14 +102,17 @@ namespace BallanceHD
                     if (e.FullName.EndsWith("/"))
                         continue;
                     var rel = e.FullName.Replace('/', '\\');
+                    if (rel.StartsWith(@"redist\", StringComparison.OrdinalIgnoreCase))
+                        continue;   // runtimes: see InstallVcRuntime
                     bool doc = rel.StartsWith(@"doc\", StringComparison.OrdinalIgnoreCase);
                     var relTarget = doc ? Path.Combine(Game.PatchDir, rel) : rel;
                     var target = Path.Combine(dir, relTarget);
-                    // the widescreen mod keeps its on/off state from the launcher
+                    // 1.0.0 switched the widescreen fix off by renaming the mod to *.off; since 1.1.0 the mod is
+                    // always on (the launcher switches its parts with marker files): the renamed copy is the patch's own
                     if (string.Equals(rel, Game.ModFile, StringComparison.OrdinalIgnoreCase) && File.Exists(target + ".off"))
                     {
-                        relTarget += ".off";
-                        target += ".off";
+                        File.Delete(target + ".off");
+                        files.Remove(relTarget + ".off");
                     }
                     if (!doc && !files.Contains(relTarget) && File.Exists(target))
                         BackUp(dir, backup, relTarget);
@@ -151,6 +158,59 @@ namespace BallanceHD
             log(T.Get("log_shortcuts"));
             Register(dir);
             log(T.Get("log_done"));
+        }
+
+        /// <summary>
+        /// Runs the embedded Microsoft installer quietly. It needs admin rights: elevated setups run it directly,
+        /// otherwise Windows asks once (UAC). Exit codes 3010 (restart pending) and 1638 (newer version present) are fine.
+        /// </summary>
+        void InstallVcRuntime()
+        {
+            log(T.Get("log_vcrt"));
+            var tmp = Path.Combine(Path.GetTempPath(), "BallanceHD_vc_redist.x86.exe");
+            using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip"))
+            using (var zip = new ZipArchive(s, ZipArchiveMode.Read))
+            {
+                var e = zip.GetEntry("redist/vc_redist.x86.exe");
+                if (e == null)
+                    throw new InvalidOperationException(T.Get("chk_vcrt"));
+                using (var es = e.Open())
+                using (var fs = File.Create(tmp))
+                    es.CopyTo(fs);
+            }
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(tmp, "/install /quiet /norestart");
+                if (IsElevated())
+                {
+                    psi.UseShellExecute = false;
+                }
+                else
+                {
+                    psi.UseShellExecute = true;
+                    psi.Verb = "runas";
+                }
+                int code;
+                try
+                {
+                    using (var p = System.Diagnostics.Process.Start(psi))
+                    {
+                        p.WaitForExit();
+                        code = p.ExitCode;
+                    }
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    throw new InvalidOperationException(T.Get("err_vcrt_declined"));
+                }
+                if (code != 0 && code != 3010 && code != 1638 && !Game.HasVcRuntime())
+                    throw new InvalidOperationException(T.Get("err_vcrt", code));
+                log(T.Get("log_vcrt_done"));
+            }
+            finally
+            {
+                try { File.Delete(tmp); } catch (Exception) { }
+            }
         }
 
         /// <summary>The language the original game was set to (GOG writes it to the registry), else Windows'.</summary>

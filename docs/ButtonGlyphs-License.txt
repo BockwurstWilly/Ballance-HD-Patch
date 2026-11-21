@@ -1,0 +1,15 @@
+UI Elements (controller button glyphs) by Mikkel Julian "Arks" Petersen - Arks @ScissorMarks
+=============================================================================================
+
+XBOX Buttons (c) 2020 by ArksDigital - https://arks.itch.io/xbox-buttons
+PS4 Buttons  (c) 2020 by ArksDigital - https://arks.itch.io/ps4-buttons
+https://arks.itch.io  -  @ScissorMarks on Twitter
+
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0):
+https://creativecommons.org/licenses/by/4.0/
+
+Changes made for Ballance HD: a selection of 14 glyphs per controller, scaled to 128 x 128 px
+(game, ModLoader\BallanceHD\glyphs\*.tga) and 64 x 64 px (launcher), converted to TGA/PNG.
+
+Xbox(R) and the Xbox(R) logo are registered trademarks of Microsoft.
+PlayStation(R) and the PlayStation(R) logo are registered trademarks of Sony Interactive Entertainment.

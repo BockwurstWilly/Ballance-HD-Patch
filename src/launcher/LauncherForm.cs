@@ -31,7 +31,8 @@ namespace BallanceHD
         CheckBox chkWide;
         List<Size2> modes = new List<Size2>();
         // controller
-        CheckBox chkPad;
+        CheckBox chkPad, chkPrompts;
+        GlyphTable glyphTable;
         RetroSlider slDead;
         Label lblDead, lblPadStatus;
         // game
@@ -318,45 +319,38 @@ namespace BallanceHD
             lblDead.Location = new Point(500, y + 4);
             slDead.ValueChanged += (o, e) => lblDead.Text = slDead.Value + " %";
             page.Controls.AddRange(new Control[] { l, slDead, lblDead });
-            y += 40;
+            y += 36;
+
+            chkPrompts = Theme.Check(T.Get("pad_prompts"));
+            CheckRow(page, ref y, chkPrompts);
+            y += 2;
 
             var lay = Theme.Label(T.Get("pad_layout"), Theme.Display(12f), Theme.Brass);
             lay.Location = new Point(28, y);
             page.Controls.Add(lay);
-            var layHint = Theme.Label(T.Get("pad_layout_hint"), Theme.Small, Theme.TextDim);
-            layHint.Location = new Point(330, y + 4);
+            var layHint = Theme.Label(T.Get("pad_layout_hint") + "  " + T.Get("pad_menu_hint"), Theme.Small, Theme.TextDim);
+            layHint.Location = new Point(130, y + 5);
             page.Controls.Add(layHint);
             y += 30;
 
-            var rows = new[]
+            glyphTable = new GlyphTable
             {
-                new[] { T.Get("pad_l_stick"), T.Get("act_roll") },
-                new[] { T.Get("pad_r_stick_x") + "  ·  " + T.Get("pad_shoulders"), T.Get("act_cam") },
-                new[] { T.Get("pad_r_stick_y") + "  ·  LT / RT  ·  Y", T.Get("act_lift") },
-                new[] { T.Get("pad_a"), T.Get("act_confirm") },
-                new[] { T.Get("pad_b"), T.Get("act_back") },
-                new[] { T.Get("pad_start"), T.Get("act_pause") },
-                new[] { T.Get("pad_x"), T.Get("act_skip") },
-                new[] { T.Get("pad_back"), T.Get("act_reset") },
+                Bounds = new Rectangle(24, y, 640, 8 * 27 + 2),
+                Rows = new[]
+                {
+                    new GlyphTable.Row(new[] { "lstick", "dpad" }, T.Get("act_roll")),
+                    new GlyphTable.Row(new[] { "rstick_lr", "lb", "rb" }, T.Get("act_cam")),
+                    new GlyphTable.Row(new[] { "rstick_up", "lt", "rt", "y" }, T.Get("act_lift")),
+                    new GlyphTable.Row(new[] { "a" }, T.Get("act_confirm")),
+                    new GlyphTable.Row(new[] { "b" }, T.Get("act_back")),
+                    new GlyphTable.Row(new[] { "start" }, T.Get("act_pause")),
+                    new GlyphTable.Row(new[] { "x" }, T.Get("act_skip")),
+                    new GlyphTable.Row(new[] { "back" }, T.Get("act_reset")),
+                },
             };
-            var table = new Panel { Bounds = new Rectangle(24, y, 640, rows.Length * 24 + 2), BackColor = Theme.Border };
-            for (int i = 0; i < rows.Length; i++)
-            {
-                var r = new Panel { Bounds = new Rectangle(1, 1 + i * 24, 638, 23), BackColor = i % 2 == 0 ? Theme.PanelLight : Theme.Panel };
-                var a = Theme.Label(rows[i][0]);
-                a.Location = new Point(8, 3);
-                var b = Theme.Label(rows[i][1], Theme.Body, Theme.AccentLight);
-                b.Location = new Point(330, 3);
-                r.Controls.Add(a);
-                r.Controls.Add(b);
-                table.Controls.Add(r);
-            }
-            page.Controls.Add(table);
-            y += table.Height + 10;
-            Note(page, ref y, T.Get("pad_menu_hint"));
+            page.Controls.Add(glyphTable);
             return page;
         }
-
         static readonly string[] GameLanguages = { "Deutsch", "English", "Español", "Italiano", "Français" };
 
         Control BuildGamePage()
@@ -425,6 +419,7 @@ namespace BallanceHD
 
             chkPad.Checked = s.Pad;
             slDead.Value = s.Deadzone;
+            chkPrompts.Checked = s.Prompts;
             lblDead.Text = s.Deadzone + " %";
 
             cbGameLang.SelectedIndex = s.GameLanguage;
@@ -454,6 +449,7 @@ namespace BallanceHD
             s.Widescreen = chkWide.Checked;
             s.Pad = chkPad.Checked;
             s.Deadzone = slDead.Value;
+            s.Prompts = chkPrompts.Checked;
             s.GameLanguage = Math.Max(0, cbGameLang.SelectedIndex);
             s.SkipIntro = chkSkip.Checked;
             s.LifeBallFix = chkLifeBall.Checked;
@@ -501,6 +497,8 @@ namespace BallanceHD
             var k = pads.Kind;
             lblPadStatus.Text = k == PadKind.Xbox ? T.Get("pad_xbox") : k == PadKind.PlayStation ? T.Get("pad_sony") : T.Get("pad_none");
             lblPadStatus.ForeColor = k == PadKind.None ? Theme.TextDim : Theme.Good;
+            if (k != PadKind.None)
+                glyphTable.Kind = k == PadKind.PlayStation ? "ps" : "xbox";
             bool aNow = p.Has(Pads.A) || p.Has(Pads.Start);
             bool aBefore = lastPad.Has(Pads.A) || lastPad.Has(Pads.Start);
             lastPad = p;
@@ -542,13 +540,14 @@ namespace BallanceHD
             padTimer.Stop();
             if (!s.Pad)
             {
+                PadMarker.SetPad(dir, PadKind.None);
                 Close();
                 return;
             }
             // the launcher stays in the background and turns controller input into keys until the game ends
             Hide();
             ShowInTaskbar = false;
-            var bridge = new Bridge(game, s.Deadzone);
+            var bridge = new Bridge(game, dir, s.Deadzone);
             var t = new Thread(() =>
             {
                 try { bridge.Run(pads); }

@@ -22,7 +22,21 @@ function Invoke-Checked([string]$what, [scriptblock]$cmd) {
 $packages = @{
     'BallancePlayer-0.3.9.0-vc6-x86.zip' = 'A4411C69E4CCD39310716BBC37886B195436964A5D7E40958818315515DADE79'
     'BMLPlus-v0.3.14.zip'                = 'BB7AA0DF79CECEBCFC9CFEE77280BF22B1DE980D8A788F5FA4CACEEAB8BDF785'
+    # button glyphs by Arks (https://arks.itch.io), CC BY 4.0
+    'PS4 BUTTONS - Assets 1_1.zip'       = 'D34D71BD0CD6EA9EC296ACEA042439C151D897C556B67F19737A45EBEFC504C3'
+    'XBOX BUTTONS - Assets 1_0.zip'      = '267434E110E63F40406A659304A70786FD7F654CB06282B0D1CCF9B8AC68F433'
 }
+
+# Microsoft Visual C++ 2015-2022 runtime (x86) for BML+: fetched from Microsoft at build time (not kept in git),
+# the setup installs it silently when it is missing
+$vcredist = Join-Path $payload 'vc_redist.x86.exe'
+if (-not (Test-Path $vcredist)) {
+    Write-Host '== downloading vc_redist.x86.exe from Microsoft'
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest 'https://aka.ms/vs/17/release/vc_redist.x86.exe' -OutFile $vcredist -UseBasicParsing
+}
+$sig = Get-AuthenticodeSignature $vcredist
+if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw 'vc_redist.x86.exe: no valid Microsoft signature' }
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $x = Join-Path $obj 'x'
 foreach ($name in $packages.Keys) {
@@ -33,6 +47,70 @@ foreach ($name in $packages.Keys) {
 }
 $bp = Join-Path $x 'BallancePlayer-0.3.9.0-vc6-x86\BallancePlayer-0.3.9.0-vc6-x86'
 $bml = Join-Path $x 'BMLPlus-v0.3.14'
+
+# --- button glyphs: the few the game needs, as 128 px TGA (game) and 64 px PNG (launcher) ---------
+Add-Type -AssemblyName System.Drawing
+$psDir = Join-Path $x 'PS4 BUTTONS - Assets 1_1\PS4 BUTTONS - Premium Assets\PS4 BUTTONS - Premium Assets'
+$xbDir = Join-Path $x 'XBOX BUTTONS - Assets 1_0\XBOX BUTTONS - Premium Assets\XBOX BUTTONS - Premium Assets'
+$glyphs = @{
+    xbox = @{
+        a = 'Digital Buttons\ABXY\button_xbox_digital_a_1.png'; b = 'Digital Buttons\ABXY\button_xbox_digital_b_1.png'
+        x = 'Digital Buttons\ABXY\button_xbox_digital_x_1.png'; y = 'Digital Buttons\ABXY\button_xbox_digital_y_1.png'
+        lb = 'Digital Buttons\Shoulder\button_xbox_digital_bumper_light_1.png'; rb = 'Digital Buttons\Shoulder\button_xbox_digital_bumper_light_2.png'
+        lt = 'Analog Triggers\button_xbox_analog_trigger_light_1.png'; rt = 'Analog Triggers\button_xbox_analog_trigger_light_2.png'
+        start = 'Digital Buttons\System\button_xbox_digital_menu_1.png'; back = 'Digital Buttons\System\button_xbox_digital_view_1.png'
+        dpad = 'D-Pad\button_xbox_dpad_light_7.png'; lstick = 'Analog Sticks\Left\button_xbox_analog_l_direction_11.png'
+        rstick_lr = 'Analog Sticks\Right\button_xbox_analog_r_direction_10.png'; rstick_up = 'Analog Sticks\Right\button_xbox_analog_r_direction_1.png'
+    }
+    ps = @{
+        a = 'Main Buttons\Button - PS Cross 1.png'; b = 'Main Buttons\Button - PS Circle 1.png'
+        x = 'Main Buttons\Button - PS Square 1.png'; y = 'Main Buttons\Button - PS Triangle 1.png'
+        lb = 'R and L Inputs\Button - PS L1.png'; rb = 'R and L Inputs\Button - PS R1.png'
+        lt = 'R and L Inputs\Button - PS L2.png'; rt = 'R and L Inputs\Button - PS R2.png'
+        start = 'Other Inputs\Button - PS Options.png'; back = 'Other Inputs\Button - PS Share.png'
+        dpad = 'Directional Arrows\Button - PS Directional Arrows.png'; lstick = 'Analogue L Inputs\Button - PS Analogue L Up Down Left Right.png'
+        rstick_lr = 'Analogue R Inputs\Button - PS Analogue R Left Right.png'; rstick_up = 'Analogue R Inputs\Button - PS Analogue R Up.png'
+    }
+}
+$glyphOut = Join-Path $obj 'glyphs'
+New-Item -ItemType Directory -Force "$glyphOut\tga", "$glyphOut\png" | Out-Null
+
+function Resize-Image([string]$src, [int]$size) {
+    $img = [System.Drawing.Image]::FromFile($src)
+    $bmp = New-Object System.Drawing.Bitmap $size, $size, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.InterpolationMode = 'HighQualityBicubic'; $g.PixelOffsetMode = 'HighQuality'; $g.SmoothingMode = 'AntiAlias'
+    $g.Clear([System.Drawing.Color]::Transparent)
+    $g.DrawImage($img, 0, 0, $size, $size)
+    $g.Dispose(); $img.Dispose()
+    $bmp
+}
+
+# uncompressed 32-bit TGA, top-left origin (Virtools' image reader loads TGA with alpha)
+function Save-Tga($bmp, [string]$path) {
+    $w = $bmp.Width; $h = $bmp.Height
+    $rect = New-Object System.Drawing.Rectangle 0, 0, $w, $h
+    $data = $bmp.LockBits($rect, 'ReadOnly', [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $pixels = New-Object byte[] ($w * $h * 4)
+    for ($row = 0; $row -lt $h; $row++) {
+        [Runtime.InteropServices.Marshal]::Copy([IntPtr]($data.Scan0.ToInt64() + $row * $data.Stride), $pixels, $row * $w * 4, $w * 4)
+    }
+    $bmp.UnlockBits($data)
+    $hdr = New-Object byte[] 18
+    $hdr[2] = 2; $hdr[12] = $w -band 0xFF; $hdr[13] = $w -shr 8; $hdr[14] = $h -band 0xFF; $hdr[15] = $h -shr 8; $hdr[16] = 32; $hdr[17] = 0x28
+    $fs = [IO.File]::Create($path); $fs.Write($hdr, 0, 18); $fs.Write($pixels, 0, $pixels.Length); $fs.Close()
+}
+
+foreach ($kind in $glyphs.Keys) {
+    $base = if ($kind -eq 'ps') { $psDir } else { $xbDir }
+    foreach ($key in $glyphs[$kind].Keys) {
+        $gsrc = Join-Path $base $glyphs[$kind][$key]
+        if (-not (Test-Path -LiteralPath $gsrc)) { throw "glyph missing: $gsrc" }
+        $big = Resize-Image $gsrc 128; Save-Tga $big "$glyphOut\tga\${kind}_$key.tga"; $big.Dispose()
+        $small = Resize-Image $gsrc 64; $small.Save("$glyphOut\png\${kind}_$key.png", [System.Drawing.Imaging.ImageFormat]::Png); $small.Dispose()
+    }
+}
+$glyphRes = Get-ChildItem "$glyphOut\png\*.png" | ForEach-Object { "/resource:$($_.FullName),glyph/$($_.Name)" }
 
 # --- icon (generated, so the package carries no game artwork): a wooden ball against a dusk sky --
 $ico = Join-Path $obj 'ballancehd.ico'
@@ -88,7 +166,7 @@ $cscBase = @('/nologo', '/target:winexe', '/optimize+', '/warnaserror+', '/platf
 
 Write-Host '== BallanceHDLauncher.exe'
 $launcher = Join-Path $obj 'BallanceHDLauncher.exe'
-Invoke-Checked 'launcher' { & $csc @cscBase "/out:$launcher" @common (Get-ChildItem "$src\launcher\*.cs" | ForEach-Object { $_.FullName }) }
+Invoke-Checked 'launcher' { & $csc @cscBase "/out:$launcher" @common (Get-ChildItem "$src\launcher\*.cs" | ForEach-Object { $_.FullName }) @glyphRes }
 
 # --- payload.zip: paths relative to the game folder; doc/... ends up in _HDPatch\doc ----------------
 Write-Host '== payload.zip'
@@ -109,6 +187,10 @@ $items = [ordered]@{
 }
 foreach ($f in Get-ChildItem "$bml\ModLoader\Fonts" -File) { $items["ModLoader/Fonts/$($f.Name)"] = $f.FullName }
 foreach ($f in Get-ChildItem "$bml\ModLoader\Mods" -File) { $items["ModLoader/Mods/$($f.Name)"] = $f.FullName }
+foreach ($f in Get-ChildItem "$glyphOut\tga" -File) { $items["ModLoader/BallanceHD/glyphs/$($f.Name)"] = $f.FullName }
+$items['doc/licenses/ButtonGlyphs-Arks-CC-BY-4.0.txt'] = "$root\docs\ButtonGlyphs-License.txt"
+# installed to _HDPatch\redist and run by the setup when the runtime is missing
+$items['redist/vc_redist.x86.exe'] = $vcredist
 $pzip = Join-Path $obj 'payload.zip'
 $za = [IO.Compression.ZipFile]::Open($pzip, 'Create')
 try {
@@ -136,6 +218,7 @@ Copy-Item "$root\THIRD-PARTY.txt" "$rel\Lizenzen - Licenses\THIRD-PARTY.txt"
 Copy-Item "$root\LICENSE" "$rel\Lizenzen - Licenses\BallanceHD-License.txt"
 Copy-Item "$bp\LICENSE" "$rel\Lizenzen - Licenses\BallancePlayer-License.txt"
 Copy-Item "$bml\LICENSE" "$rel\Lizenzen - Licenses\BMLPlus-License.txt"
+Copy-Item "$root\docs\ButtonGlyphs-License.txt" "$rel\Lizenzen - Licenses\ButtonGlyphs-Arks-CC-BY-4.0.txt"
 "$hash *BallanceHD_Setup.exe" | Set-Content "$rel\BallanceHD_Setup.exe.sha256" -Encoding ASCII
 $zip = Join-Path $out "release\$name.zip"
 if (Test-Path $zip) { Remove-Item $zip }

@@ -1,4 +1,4 @@
-Ballance - HD Patch 1.0.0
+Ballance - HD Patch 1.1.0
 =========================
 
 DEUTSCH
@@ -9,8 +9,8 @@ Installation
   BallanceHD_Setup.exe starten. Das Setup findet das Spiel automatisch (GOG/Steam-Registry,
   Desktop-Verknüpfung), prüft die Spieldateien und installiert. Danach Ballance über
   "Ballance - HD Launcher" (Desktop / Startmenü / Spielordner) starten.
-  Voraussetzung: Microsoft Visual C++ 2015-2022 (x86) - fehlt sie, zeigt das Setup einen
-  Download-Knopf (https://aka.ms/vs/17/release/vc_redist.x86.exe).
+  Alles Nötige ist im Setup enthalten: fehlt die Microsoft Visual C++ 2015-2022 Laufzeit (x86),
+  installiert das Setup sie mit (Windows fragt dafür einmal nach Administratorrechten).
   Deinstallation: Startmenü "Ballance - HD-Patch entfernen", Launcher -> Info -> "HD-Patch
   entfernen", Windows "Apps & Features" oder das Setup erneut starten. Alle Originaldateien
   werden wiederhergestellt; Spielstände und Highscores (Database.tdb) bleiben unangetastet.
@@ -43,6 +43,10 @@ Controller (Xbox, DualShock 4, DualSense - USB oder Bluetooth)
     X / Quadrat                       Einführung überspringen (Q)
     View / Share                      Kugel neu setzen (R)
   Im Launcher startet A / Kreuz das Spiel - ideal am TV.
+  Tastensymbole im Spiel: In Menüs und im Pause-Menü zeigt eine Leiste oben rechts die Knöpfe
+  (Auswählen / Bestätigen / Zurück), zu Beginn jedes Levels (im Einführungslevel dauerhaft) eine
+  Steuerungsübersicht oben links. Xbox- oder PlayStation-Symbole je nach angeschlossenem
+  Controller, auch beim Wechsel während des Spiels. Abschaltbar im Launcher (Controller).
   Wichtig: Für den Controller Ballance über den HD Launcher starten (nicht direkt über GOG
   Galaxy - dort läuft das Spiel zwar auch in HD, aber ohne Controller).
 
@@ -60,7 +64,8 @@ For Ballance (GOG or Steam) on Windows 10/11.
 Installation
   Run BallanceHD_Setup.exe. It finds the game (GOG/Steam registry, desktop shortcut), checks the
   game files and installs. Then start Ballance with "Ballance - HD Launcher".
-  Requires Microsoft Visual C++ 2015-2022 (x86); the setup offers the download if it is missing.
+  Everything is included: if the Microsoft Visual C++ 2015-2022 runtime (x86) is missing, the
+  setup installs it as well (Windows asks once for administrator rights).
   Uninstall: start menu "Ballance - Remove HD Patch", launcher -> About, Apps & Features, or run
   the setup again. All original files are restored; save games / high scores are never touched.
 
@@ -80,9 +85,14 @@ Controller (Xbox, DualShock 4, DualSense - USB or Bluetooth)
   roll and menus, right stick left/right or LB/RB rotate the camera, right stick up / LT / RT / Y
   raise the camera, A confirm, B / Start back / pause, X skip tutorial, View / Share respawn.
   Start the game from the HD Launcher to use a controller.
+  Button prompts in the game: a bar top right in menus and the pause menu, a controls legend top
+  left at the start of every level (always in the tutorial level) - Xbox or PlayStation glyphs,
+  following the connected controller. Can be switched off in the launcher.
 
 Credits
   Presented by CompiWare - made by BockwurstWilly using Claude.
   BallancePlayer and BML+ by doyaGu, Gamepiaynmo and the Ballance modding community (MIT).
+  UI Elements (button glyphs) by Mikkel Julian "Arks" Petersen - Arks @ScissorMarks,
+  https://arks.itch.io - CC BY 4.0.
   Ballance (c) 2004 Cyparade / Atari, today Ziggurat Interactive. Unofficial fan project; it
   contains no game files.

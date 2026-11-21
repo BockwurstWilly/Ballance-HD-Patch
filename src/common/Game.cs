@@ -248,6 +248,7 @@ namespace BallanceHD
         public bool Widescreen = true;
         public bool Pad = true;
         public int Deadzone = 35;            // percent of the stick range
+        public bool Prompts = true;          // controller button prompts in the game
         // game
         public int GameLanguage = 1;         // 0 de, 1 en, 2 es, 3 it, 4 fr
         public bool SkipIntro = true;
@@ -272,6 +273,7 @@ namespace BallanceHD
             s.Widescreen = ini.GetBool("Graphics", "Widescreen", s.Widescreen);
             s.Pad = ini.GetBool("Controller", "Enabled", s.Pad);
             s.Deadzone = Math.Max(10, Math.Min(80, ini.GetInt("Controller", "DeadZone", s.Deadzone)));
+            s.Prompts = ini.GetBool("Controller", "ButtonPrompts", s.Prompts);
 
             // the game's own files are the truth for game options
             var player = IniDoc.Load(Path.Combine(dir, Game.PlayerIni));
@@ -319,6 +321,7 @@ namespace BallanceHD
             ini.Set("Graphics", "Widescreen", Widescreen);
             ini.Set("Controller", "Enabled", Pad);
             ini.Set("Controller", "DeadZone", Deadzone);
+            ini.Set("Controller", "ButtonPrompts", Prompts);
             ini.Save();
         }
 
@@ -380,22 +383,56 @@ namespace BallanceHD
                 { "SpriteVideoFormat", "_32_ARGB8888" },
             });
 
-            // the widescreen mod: enabled = BallanceHD.mod.as, disabled = BallanceHD.mod.as.off
+            // the mod is always on; what it does is switched by marker files it checks (see BallanceHD.mod.as)
             var on = Path.Combine(dir, Game.ModFile);
             var off = on + ".off";
-            if (Widescreen && File.Exists(off))
+            if (File.Exists(off))
             {
                 if (File.Exists(on))
                     File.Delete(off);
                 else
-                    File.Move(off, on);
+                    File.Move(off, on);       // 1.0.0 switched the widescreen fix by renaming the mod
             }
-            else if (!Widescreen && File.Exists(on))
+            PadMarker.SetFlag(dir, "wide_off", !Widescreen);
+            PadMarker.SetFlag(dir, "hints_off", !Prompts || !Pad);
+            PadMarker.SetFlag(dir, "lang_de", GameLanguage == 0);
+        }
+    }
+
+    /// <summary>
+    /// Small marker files in ModLoader\BallanceHD that the game mod polls (it can only test whether a file exists):
+    /// which controller is connected (pad_xbox / pad_ps, kept up to date by the launcher while the game runs),
+    /// the language of the prompts and what is switched off.
+    /// </summary>
+    static class PadMarker
+    {
+        public const string Dir = @"ModLoader\BallanceHD";
+
+        public static void SetFlag(string dir, string name, bool on)
+        {
+            try
             {
-                if (File.Exists(off))
-                    File.Delete(off);
-                File.Move(on, off);
+                var p = Path.Combine(dir, Dir, name);
+                if (on && !File.Exists(p))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(p));
+                    File.WriteAllText(p, "");
+                }
+                else if (!on && File.Exists(p))
+                {
+                    File.Delete(p);
+                }
             }
+            catch (Exception)
+            {
+                // a marker that cannot be written only costs the prompts
+            }
+        }
+
+        public static void SetPad(string dir, PadKind kind)
+        {
+            SetFlag(dir, "pad_xbox", kind == PadKind.Xbox);
+            SetFlag(dir, "pad_ps", kind == PadKind.PlayStation);
         }
     }
 
