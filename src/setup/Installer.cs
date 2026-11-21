@@ -84,7 +84,12 @@ namespace BallanceHD
                     if (!e.FullName.EndsWith("/") && !e.FullName.StartsWith("doc/", StringComparison.OrdinalIgnoreCase))
                         payload.Add(e.FullName.Replace('/', '\\'));
             if (update)
+            {
                 RemoveObsolete(dir, backup, files, payload, state);
+                var doc = Path.Combine(dir, Game.PatchDir, "doc");
+                if (Directory.Exists(doc))
+                    Directory.Delete(doc, true);   // the documents come fresh from the payload
+            }
 
             // 1. originals: back up what is changed, move away what breaks the picture
             //    (only on the first install: on an update these files are already the patch's own)
@@ -129,6 +134,11 @@ namespace BallanceHD
                     log(T.Get("log_copy", relTarget));
                 }
             }
+            // the plugin's in-game font, rendered here from the Windows font (no font file is shipped)
+            FontAtlas.Make(dir);
+            files.Add(FontAtlas.Tga);
+            files.Add(FontAtlas.Bin);
+            log(T.Get("log_copy", FontAtlas.Tga));
             WriteList(dir, files);
 
             // 3. settings: a fresh install starts with the HD defaults (native resolution of the main display),

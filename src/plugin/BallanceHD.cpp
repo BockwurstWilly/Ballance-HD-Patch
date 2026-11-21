@@ -1203,7 +1203,7 @@ PLUGIN_EXPORT CKPluginInfo *CKGetPluginInfo(int index)
         g_info->m_Description = "Ballance HD";
         g_info->m_Author = "CompiWare / BockwurstWilly";
         g_info->m_Summary = "Widescreen, controller and HD features for Ballance";
-        g_info->m_Version = 0x020001;
+        g_info->m_Version = 0x020100;
         g_info->m_InitInstanceFct = InitInstance;
         g_info->m_ExitInstanceFct = ExitInstance;
         g_info->m_Type = CKPLUGIN_MANAGER_DLL;

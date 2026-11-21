@@ -312,6 +312,87 @@ namespace BallanceHD
         }
     }
 
+    /// <summary>
+    /// One settings row (label left, control right). The row with the focus lights up as a whole - easy to
+    /// follow from the couch with a controller; the controls inside take over its background.
+    /// </summary>
+    class RowPanel : Panel
+    {
+        public static readonly Color Lit = Color.FromArgb(58, 40, 30);
+        bool lit;
+
+        public RowPanel()
+        {
+            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
+            BackColor = Theme.Panel;
+        }
+
+        protected override void OnEnter(EventArgs e) { SetLit(true); base.OnEnter(e); }
+        protected override void OnLeave(EventArgs e) { SetLit(false); base.OnLeave(e); }
+
+        void SetLit(bool on)
+        {
+            lit = on;
+            BackColor = on ? Lit : Theme.Panel;
+            foreach (Control c in Controls)
+                if (c is RetroToggle || c is RetroSlider || c is RetroCheck)
+                    c.BackColor = BackColor;
+            Invalidate(true);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            using (var b = new SolidBrush(BackColor))
+                e.Graphics.FillRectangle(b, ClientRectangle);
+            if (lit)
+                using (var b = new SolidBrush(Theme.AccentLight))
+                    e.Graphics.FillRectangle(b, 0, 0, Theme.S(4), Height);
+        }
+    }
+
+    /// <summary>On / off switch (instead of a tick box): pill with a knob and the state as text.</summary>
+    class RetroToggle : CheckBox
+    {
+        public RetroToggle()
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
+            AutoSize = false;
+            Size = new Size(110, 26);
+            Cursor = Cursors.Hand;
+            BackColor = Theme.Panel;
+            Text = "";
+        }
+
+        protected override void OnCheckedChanged(EventArgs e) { Invalidate(); base.OnCheckedChanged(e); }
+        protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
+        protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            using (var bg = new SolidBrush(BackColor))
+                g.FillRectangle(bg, ClientRectangle);
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            int h = Height - 6, w = h * 2 - 4, y = 3;
+            var pill = new Rectangle(1, y, w, h);
+            using (var path = new GraphicsPath())
+            {
+                path.AddArc(pill.Left, pill.Top, h, h, 90, 180);
+                path.AddArc(pill.Right - h, pill.Top, h, h, 270, 180);
+                path.CloseFigure();
+                using (var b = new SolidBrush(Checked ? Theme.Accent : Theme.PanelLight))
+                    g.FillPath(b, path);
+                using (var p = new Pen(Focused ? Theme.Brass : Theme.Border))
+                    g.DrawPath(p, path);
+            }
+            int k = h - 6, kx = Checked ? pill.Right - k - 3 : pill.Left + 3;
+            using (var b = new SolidBrush(Checked ? Theme.Text : Theme.TextDim))
+                g.FillEllipse(b, kx, y + 3, k, k);
+            TextRenderer.DrawText(g, Checked ? T.Get("on") : T.Get("off"), Theme.Body, new Point(w + 10, (Height - TextRenderer.MeasureText("A", Theme.Body).Height) / 2),
+                Checked ? Theme.Text : Theme.TextDim, TextFormatFlags.NoPrefix);
+        }
+    }
+
     /// <summary>Horizontal value slider in the theme colours (the stock TrackBar ignores dark colours).</summary>
     class RetroSlider : Control
     {

@@ -5,7 +5,7 @@ namespace BallanceHD
 {
     static class Version
     {
-        public const string Text = "2.0.1";
+        public const string Text = "2.1.0";
         public const string BallancePlayer = "0.3.9";
     }
 
@@ -63,7 +63,6 @@ namespace BallanceHD
             { "gfx_mode_bl", new[] { "Randloses Vollbild (empfohlen)", "Borderless fullscreen (recommended)" } },
             { "gfx_mode_fs", new[] { "Exklusives Vollbild", "Exclusive fullscreen" } },
             { "gfx_mode_win", new[] { "Fenster", "Window" } },
-            { "gfx_mode_hint", new[] { "Randlos: native Auflösung, kein Tearing, Alt+Tab ohne Flackern. Exklusiv: mit Tearing (VSync wirkt bei Direct3D 8 unter Windows 10/11 nicht).", "Borderless: native resolution, no tearing, smooth Alt+Tab. Exclusive: tears (vsync has no effect for Direct3D 8 on Windows 10/11)." } },
             { "gfx_res", new[] { "Auflösung", "Resolution" } },
             { "gfx_res_native", new[] { "Nativ ({0} × {1})", "Native ({0} × {1})" } },
             { "gfx_aa", new[] { "Kantenglättung", "Anti-aliasing" } },
@@ -72,27 +71,22 @@ namespace BallanceHD
             { "gfx_fps_auto", new[] { "Automatisch (VSync, {0} Hz)", "Automatic (VSync, {0} Hz)" } },
             { "gfx_fps_n", new[] { "{0} FPS", "{0} FPS" } },
             { "gfx_fps_off", new[] { "Unbegrenzt", "Unlimited" } },
-            { "gfx_wide", new[] { "Breitbild ohne Ränder (16:9, 21:9 …)", "Widescreen without bars (16:9, 21:9 …)" } },
-            { "gfx_wide_hint", new[] { "Füllt den ganzen Bildschirm; das Sichtfeld wird seitlich erweitert, oben und unten fehlt nichts.", "Fills the whole screen; the view is widened at the sides, nothing is cut off at the top or bottom." } },
-            { "gfx_note", new[] { "Immer aktiv: 32-Bit-Farben und -Texturen statt 16 Bit, scharfe HUD-Grafik in nativer Auflösung.", "Always on: 32-bit colour and textures instead of 16-bit, sharp HUD at native resolution." } },
+            { "gfx_wide", new[] { "Breitbild ohne Ränder", "Widescreen without bars" } },
 
             // controller
-            { "pad_use", new[] { "Controller benutzen", "Use controller" } },
-            { "pad_use_hint", new[] { "Xbox, DualShock 4 und DualSense – USB oder Bluetooth, ohne Steam oder DS4Windows.", "Xbox, DualShock 4 and DualSense – USB or Bluetooth, no Steam or DS4Windows needed." } },
+            { "pad_use", new[] { "Controller-Support", "Controller support" } },
             { "pad_none", new[] { "Kein Controller verbunden.", "No controller connected." } },
             { "pad_xbox", new[] { "Xbox-Controller verbunden.", "Xbox controller connected." } },
             { "pad_sony", new[] { "PlayStation-Controller verbunden.", "PlayStation controller connected." } },
-            { "pad_prompts", new[] { "Tastensymbole im Spiel einblenden (Menüs, Pause, Levelstart)", "Show button prompts in the game (menus, pause, level start)" } },
-            { "pad_analog", new[] { "Kugel stufenlos rollen (linker Stick)", "Roll the ball steplessly (left stick)" } },
-            { "pad_freecam", new[] { "Freie Kamera (rechter Stick dreht und neigt, View wechselt den Abstand)", "Free camera (right stick turns and tilts, View changes the distance)" } },
+            { "pad_prompts", new[] { "Tastensymbole im Spiel", "Button prompts in the game" } },
+            { "pad_analog", new[] { "Stufenlos rollen (linker Stick)", "Stepless rolling (left stick)" } },
+            { "pad_freecam", new[] { "Freie Kamera (rechter Stick)", "Free camera (right stick)" } },
             { "pad_invert", new[] { "Kamera-Neigung umkehren", "Invert camera tilt" } },
             { "pad_camspeed", new[] { "Kamera-Tempo", "Camera speed" } },
             { "pad_ingame_hint", new[] { "Diese Einstellungen und die Tastenbelegung gibt es auch im Spiel: Optionen → Steuerung, dort mit Y / Dreieck.", "These settings and the button layout are also in the game: Options → Controls, there with Y / Triangle." } },
-            { "pad_launcher_hint", new[] { "Launcher mit dem Controller: Steuerkreuz wählt aus, links/rechts ändert, A bestätigt, LB/RB wechselt die Seite, Y übernimmt, Start spielt.", "The launcher with a controller: d-pad selects, left/right changes, A confirms, LB/RB switch pages, Y applies, Start plays." } },
             { "act_freecam", new[] { "Kamera frei drehen und neigen", "Turn and tilt the camera" } },
             { "map_reset", new[] { "Standardbelegung", "Default layout" } },
             { "map_hint", new[] { "Linker Stick und Steuerkreuz bewegen auch in den Menüs. Im Spiel: Optionen → Steuerung (Y / Dreieck).", "Left stick and d-pad also move through the menus. In the game: Options → Controls (Y / Triangle)." } },
-            { "st_padnav", new[] { "Controller: LB/RB Seite · A wählen · Start spielen", "Controller: LB/RB page · A select · Start play" } },
             { "pad_dead", new[] { "Stick-Totzone", "Stick dead zone" } },
             { "pad_layout", new[] { "Belegung", "Layout" } },
             { "pad_layout_hint", new[] { "Gilt für die Standard-Tasten des Spiels.", "Uses the game's default keys." } },
@@ -120,25 +114,28 @@ namespace BallanceHD
             // game
             { "game_lang", new[] { "Spielsprache", "Game language" } },
             { "game_skip", new[] { "Atari-/Logo-Intro überspringen", "Skip the Atari / logo intro" } },
-            { "game_fps", new[] { "FPS-Anzeige oben rechts", "FPS counter top right" } },
+            { "game_fps", new[] { "FPS-Anzeige", "FPS counter" } },
             { "game_ui_lang", new[] { "Sprache des Launchers", "Launcher language" } },
             { "lang_auto", new[] { "Automatisch (Windows)", "Automatic (Windows)" } },
-            { "game_save_hint", new[] { "Spielstände und Highscores bleiben in Database.tdb und werden nicht verändert.", "Save games and high scores stay in Database.tdb and are not touched." } },
 
             // info
             { "info_text", new[] {
                 "Inoffizieller HD-Patch für Ballance (2004, Cyparade / Atari).\n\n" +
-                "• BallancePlayer {0} von doyaGu – neue Spiel-EXE: 32 Bit, hohe Auflösungen, randloses Vollbild (MIT-Lizenz)\n" +
-                "• Ballance HD (dieses Paket) – eigenes Spiel-Plugin: Breitbild-Sichtfeld, VSync, Controller mit stufenlosem Rollen und freier Kamera, Tastensymbole; Setup und Launcher\n" +
-                "• Schrift im Spiel: BML Sans (IBM Plex Sans) – SIL Open Font License\n" +
+                "• Ballance HD von BockwurstWilly – Spiel-Plugin (Breitbild, VSync, Controller, Tastensymbole), Setup und Launcher\n" +
+                "• BallancePlayer von doyaGu (MIT-Lizenz)\n" +
                 "• Tastensymbole: UI Elements von Arks (@ScissorMarks, arks.itch.io) – CC BY 4.0\n\n" +
                 "Deinstallieren stellt den Spielordner wieder her. Spielstände bleiben erhalten.",
                 "Unofficial HD patch for Ballance (2004, Cyparade / Atari).\n\n" +
-                "• BallancePlayer {0} by doyaGu – new game executable: 32-bit, high resolutions, borderless fullscreen (MIT licence)\n" +
-                "• Ballance HD (this package) – its own game plugin: widescreen field of view, vsync, controller with stepless rolling and a free camera, button prompts; setup and launcher\n" +
-                "• In-game font: BML Sans (IBM Plex Sans) – SIL Open Font License\n" +
+                "• Ballance HD by BockwurstWilly – game plugin (widescreen, vsync, controller, button prompts), setup and launcher\n" +
+                "• BallancePlayer by doyaGu (MIT licence)\n" +
                 "• Button glyphs: UI Elements by Arks (@ScissorMarks, arks.itch.io) – CC BY 4.0\n\n" +
                 "Uninstalling restores the game folder. Save games are kept." } },
+            { "on", new[] { "An", "On" } },
+            { "off", new[] { "Aus", "Off" } },
+            { "hint_page", new[] { "Seite", "Page" } },
+            { "hint_select", new[] { "Wählen", "Select" } },
+            { "hint_apply", new[] { "Übernehmen", "Apply" } },
+            { "hint_play", new[] { "Spielen", "Play" } },
             { "info_folder", new[] { "Spielordner öffnen", "Open game folder" } },
             { "info_uninstall", new[] { "HD-Patch entfernen …", "Remove HD patch …" } },
 

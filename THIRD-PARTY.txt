@@ -1,4 +1,4 @@
-Ballance HD Patch 2.0.1 - Drittanbieter-Komponenten / third-party components
+Ballance HD Patch 2.1.0 - Drittanbieter-Komponenten / third-party components
 =============================================================================
 
 BallancePlayer 0.3.9  (Bin\Player.exe)
@@ -7,11 +7,8 @@ BallancePlayer 0.3.9  (Bin\Player.exe)
   A4411C69E4CCD39310716BBC37886B195436964A5D7E40958818315515DADE79
   https://github.com/doyaGu/BallancePlayer/releases/tag/v0.3.9
 
-BML Sans SC  (BallanceHD\font.tga, font.bin - a rendered character atlas of the font)
-  derived from IBM Plex Sans SC: Copyright (C) 2018 IBM Corp., Reserved Font Name "Plex"
-  SIL Open Font License 1.1 (Font-BMLSans-OFL.txt); taken from the Ballance Mod Loader Plus 0.3.14
-  release archive (SHA256 BB7AA0DF79CECEBCFC9CFEE77280BF22B1DE980D8A788F5FA4CACEEAB8BDF785)
-  https://github.com/doyaGu/BallanceModLoaderPlus  -  https://github.com/IBM/plex
+In-game font: none shipped - the setup renders the plugin's character atlas (BallanceHD\font.tga, font.bin)
+  on the player's PC from the installed Windows font Segoe UI.
 
 UI Elements - controller button glyphs  (BallanceHD\glyphs\*.tga, launcher)
   (c) 2020 Mikkel Julian "Arks" Petersen / ArksDigital - Arks @ScissorMarks (Twitter)

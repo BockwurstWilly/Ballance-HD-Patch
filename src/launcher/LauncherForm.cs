@@ -128,6 +128,7 @@ namespace BallanceHD
             status.Bounds = new Rectangle(64, 9, 380, 18);
             bottom.Controls.Add(status);
             statusTimer.Tick += (o, e) => { statusTimer.Stop(); status.Text = ""; };
+            BuildPadHints(bottom);
             var logo = Theme.Logo(new Rectangle(12, 7, 44, 44), Theme.Panel);
             if (logo != null)
                 bottom.Controls.Add(logo);
@@ -144,6 +145,52 @@ namespace BallanceHD
             close.Click += (o, e) => Close();
             bottom.Controls.AddRange(new Control[] { play, apply, close });
             AcceptButton = null;
+        }
+
+        // ---- controller hints in the bottom bar (only while a controller is connected) ---------------
+
+        readonly Panel padHints = new Panel();
+        readonly List<GlyphIcon> hintIcons = new List<GlyphIcon>();
+
+        void BuildPadHints(Panel bottom)
+        {
+            padHints.Bounds = new Rectangle(64, 6, 390, 22);
+            padHints.BackColor = Theme.Panel;
+            padHints.Visible = false;
+            int x = 0;
+            var items = new[]
+            {
+                new[] { "lb", "rb" }, new[] { T.Get("hint_page") },
+                new[] { "a" }, new[] { T.Get("hint_select") },
+                new[] { "y" }, new[] { T.Get("hint_apply") },
+                new[] { "start" }, new[] { T.Get("hint_play") },
+            };
+            for (int i = 0; i < items.Length; i += 2)
+            {
+                var icon = new GlyphIcon { Keys = items[i], Bounds = new Rectangle(x, 1, 20 * items[i].Length + 4 * (items[i].Length - 1), 20) };
+                hintIcons.Add(icon);
+                padHints.Controls.Add(icon);
+                x += icon.Width + 4;
+                var l = Theme.Label(items[i + 1][0], Theme.Small, Theme.Text);
+                l.Location = new Point(x, 3);
+                padHints.Controls.Add(l);
+                x += TextRenderer.MeasureText(l.Text, Theme.Small).Width + 8;
+            }
+            bottom.Controls.Add(padHints);
+            padHints.BringToFront();
+        }
+
+        void ShowPadHints(PadKind k)
+        {
+            bool show = k != PadKind.None && status.Text == "";
+            if (show)
+                foreach (var g in hintIcons)
+                    g.Kind = k == PadKind.PlayStation ? "ps" : "xbox";
+            if (padHints.Visible != show)
+                padHints.Visible = show;
+            status.Visible = !show;
+            if (show)
+                padHints.BringToFront();
         }
 
         void ShowPage(int index)
@@ -172,43 +219,37 @@ namespace BallanceHD
             };
             page.Controls.Add(head);
             page.Paint += (o, e) => Theme.Rule(e.Graphics, Theme.S(24), page.Width - Theme.S(24), Theme.S(50));
-            y = 66;
+            y = 62;
             return page;
         }
 
-        void Row(Panel page, ref int y, string label, Control control, string hint = null)
+        // every setting is one row: label left, control from ValueX; the row with the focus lights up
+        const int RowX = 14, RowW = 672, RowH = 38, ValueX = 300;
+
+        RowPanel NewRow(Panel page, ref int y, string label, Control control, int labelX = 14)
         {
-            var l = Theme.Label(label);
-            l.Location = new Point(28, y + 4);
-            page.Controls.Add(l);
-            control.Location = new Point(210, y);
-            page.Controls.Add(control);
-            y += control.Height + 4;
-            if (hint != null)
+            var row = new RowPanel { Bounds = new Rectangle(RowX, y, RowW, RowH) };
+            if (label != null)
             {
-                var h = Theme.Label(hint, Theme.Small, Theme.TextDim);
-                h.Location = new Point(210, y);
-                h.MaximumSize = new Size(460, 0);
-                page.Controls.Add(h);
-                y += Theme.Unscaled(h.PreferredHeight) + 2;
+                var l = Theme.Label(label);
+                l.Location = new Point(labelX, (RowH - 20) / 2);
+                row.Controls.Add(l);
             }
-            y += 8;
+            if (control != null)
+            {
+                control.Location = new Point(ValueX, (RowH - control.Height) / 2);
+                row.Controls.Add(control);
+            }
+            page.Controls.Add(row);
+            y += RowH + 2;
+            return row;
         }
 
-        void CheckRow(Panel page, ref int y, CheckBox box, string hint = null)
+        CheckBox Toggle(Panel page, ref int y, string label)
         {
-            box.Location = new Point(28, y);
-            page.Controls.Add(box);
-            y += 26;
-            if (hint != null)
-            {
-                var h = Theme.Label(hint, Theme.Small, Theme.TextDim);
-                h.Location = new Point(50, y - 4);
-                h.MaximumSize = new Size(620, 0);
-                page.Controls.Add(h);
-                y += Theme.Unscaled(h.PreferredHeight) + 2;
-            }
-            y += 6;
+            var t = new RetroToggle();
+            NewRow(page, ref y, label, t);
+            return t;
         }
 
         Label Note(Panel page, ref int y, string text)
@@ -227,32 +268,30 @@ namespace BallanceHD
         {
             int y;
             var page = NewPage(T.Get("nav_gfx"), out y);
-            cbDisplay = Theme.Combo(440);
+            cbDisplay = Theme.Combo(360);
             foreach (var d in displays)
                 cbDisplay.Items.Add(T.Get("gfx_display_item", d.Number, d.Name, d.Width, d.Height, d.Hz, d.Primary ? T.Get("gfx_primary") : ""));
             cbDisplay.SelectedIndexChanged += (o, e) => { FillResolutions(); FillFps(); };
-            Row(page, ref y, T.Get("gfx_display"), cbDisplay);
+            // only worth a row with a second screen (monitor + TV)
+            if (displays.Count > 1)
+                NewRow(page, ref y, T.Get("gfx_display"), cbDisplay);
 
             cbMode = Theme.Combo(300);
             cbMode.Items.AddRange(new object[] { T.Get("gfx_mode_bl"), T.Get("gfx_mode_fs"), T.Get("gfx_mode_win") });
             cbMode.SelectedIndexChanged += (o, e) => FillResolutions();
-            Row(page, ref y, T.Get("gfx_mode"), cbMode, T.Get("gfx_mode_hint"));
+            NewRow(page, ref y, T.Get("gfx_mode"), cbMode);
 
             cbRes = Theme.Combo(300);
-            Row(page, ref y, T.Get("gfx_res"), cbRes);
+            NewRow(page, ref y, T.Get("gfx_res"), cbRes);
 
-            cbAa = Theme.Combo(160);
+            cbFps = Theme.Combo(300);
+            NewRow(page, ref y, T.Get("gfx_fps"), cbFps);
+
+            cbAa = Theme.Combo(300);
             cbAa.Items.AddRange(new object[] { T.Get("gfx_off"), "2× MSAA", "4× MSAA", "8× MSAA" });
-            Row(page, ref y, T.Get("gfx_aa"), cbAa);
+            NewRow(page, ref y, T.Get("gfx_aa"), cbAa);
 
-            cbFps = Theme.Combo(240);
-            Row(page, ref y, T.Get("gfx_fps"), cbFps);
-
-            y += 4;
-            chkWide = Theme.Check(T.Get("gfx_wide"));
-            CheckRow(page, ref y, chkWide, T.Get("gfx_wide_hint"));
-            y += 4;
-            Note(page, ref y, T.Get("gfx_note"));
+            chkWide = Toggle(page, ref y, T.Get("gfx_wide"));
             return page;
         }
 
@@ -306,49 +345,33 @@ namespace BallanceHD
         {
             int y;
             var page = NewPage(T.Get("nav_pad"), out y);
-            chkPad = Theme.Check(T.Get("pad_use"));
-            chkPad.Location = new Point(28, y);
-            page.Controls.Add(chkPad);
+            chkPad = new RetroToggle();
+            var row = NewRow(page, ref y, T.Get("pad_use"), chkPad);
             lblPadStatus = Theme.Label("", Theme.Bold, Theme.TextDim);
-            lblPadStatus.Location = new Point(330, y + 2);
-            page.Controls.Add(lblPadStatus);
-            y += 26;
-            var h = Theme.Label(T.Get("pad_use_hint"), Theme.Small, Theme.TextDim);
-            h.Location = new Point(50, y - 4);
-            page.Controls.Add(h);
-            y += 30;
+            lblPadStatus.Location = new Point(ValueX + 130, (RowH - 20) / 2);
+            row.Controls.Add(lblPadStatus);
+            y += 8;
 
             slDead = Slider(page, ref y, T.Get("pad_dead"), 10, 80, out lblDead);
             slDead.ValueChanged += (o, e) => lblDead.Text = slDead.Value + " %";
-            y += 4;
-
-            chkAnalog = Theme.Check(T.Get("pad_analog"));
-            CheckRow(page, ref y, chkAnalog);
-            chkFreeCam = Theme.Check(T.Get("pad_freecam"));
-            CheckRow(page, ref y, chkFreeCam);
-            chkInvert = Theme.Check(T.Get("pad_invert"));
-            CheckRow(page, ref y, chkInvert);
+            chkAnalog = Toggle(page, ref y, T.Get("pad_analog"));
+            chkFreeCam = Toggle(page, ref y, T.Get("pad_freecam"));
+            chkInvert = Toggle(page, ref y, T.Get("pad_invert"));
             slCam = Slider(page, ref y, T.Get("pad_camspeed"), 25, 300, out lblCam);
             slCam.ValueChanged += (o, e) => lblCam.Text = slCam.Value + " %";
-            y += 4;
-            chkPrompts = Theme.Check(T.Get("pad_prompts"));
-            CheckRow(page, ref y, chkPrompts);
-            y += 4;
+            chkPrompts = Toggle(page, ref y, T.Get("pad_prompts"));
+            y += 10;
             Note(page, ref y, T.Get("pad_ingame_hint"));
-            Note(page, ref y, T.Get("pad_launcher_hint"));
             return page;
         }
 
         RetroSlider Slider(Panel page, ref int y, string label, int min, int max, out Label value)
         {
-            var sl = new RetroSlider { Minimum = min, Maximum = max, Width = 280 };
+            var sl = new RetroSlider { Minimum = min, Maximum = max, Width = 260 };
+            var row = NewRow(page, ref y, label, sl);
             value = Theme.Label("", Theme.Bold, Theme.AccentLight);
-            var l = Theme.Label(label);
-            l.Location = new Point(28, y + 4);
-            sl.Location = new Point(210, y);
-            value.Location = new Point(500, y + 4);
-            page.Controls.AddRange(new Control[] { l, sl, value });
-            y += 32;
+            value.Location = new Point(ValueX + 272, (RowH - 20) / 2);
+            row.Controls.Add(value);
             return sl;
         }
 
@@ -356,40 +379,33 @@ namespace BallanceHD
         {
             int y;
             var page = NewPage(T.Get("nav_map"), out y);
-            // fixed: the sticks and the d-pad
+            // fixed: the sticks and the d-pad (the reset button sits beside them)
+            int top = y;
             FixedRow(page, ref y, new[] { "lstick", "dpad" }, T.Get("act_roll"));
             FixedRow(page, ref y, new[] { "rstick" }, T.Get("act_freecam"));
-            y += 6;
+            y += 4;
             for (int i = 0; i < PadConfig.Actions.Length; i++)
             {
                 var a = PadConfig.Actions[i];
-                var icon = new GlyphIcon { Bounds = new Rectangle(28, y, 27, 27) };
-                glyphIcons.Add(icon);
-                var l = Theme.Label(a.Label);
-                l.Location = new Point(70, y + 3);
-                var cb = Theme.Combo(230);
+                var cb = Theme.Combo(260);
                 foreach (var b in PadConfig.Buttons)
                     cb.Items.Add(b);
-                cb.Location = new Point(400, y);
+                var row = NewRow(page, ref y, a.Label, cb, 52);
+                var icon = new GlyphIcon { Bounds = new Rectangle(14, (RowH - 27) / 2, 27, 27) };
+                row.Controls.Add(icon);
+                glyphIcons.Add(icon);
                 var ic = icon;
                 cb.SelectedIndexChanged += (o, e) => ic.Keys = new[] { PadConfig.Glyph((string)((ComboBox)o).SelectedItem) };
                 cbMap.Add(cb);
-                page.Controls.AddRange(new Control[] { icon, l, cb });
-                y += 30;
             }
-            y += 4;
             var reset = Theme.Button(T.Get("map_reset"));
-            reset.Bounds = new Rectangle(400, y, 230, 30);
+            reset.Bounds = new Rectangle(RowX + ValueX, top + 2, 260, 30);
             reset.Click += (o, e) =>
             {
                 for (int i = 0; i < PadConfig.Actions.Length; i++)
                     cbMap[i].SelectedItem = PadConfig.Actions[i].Default;
             };
             page.Controls.Add(reset);
-            var hint = Theme.Label(T.Get("map_hint"), Theme.Small, Theme.TextDim);
-            hint.MaximumSize = new Size(360, 0);
-            hint.Location = new Point(28, y);
-            page.Controls.Add(hint);
             return page;
         }
 
@@ -400,7 +416,7 @@ namespace BallanceHD
             var l = Theme.Label(text, Theme.Body, Theme.AccentLight);
             l.Location = new Point(28 + icon.Width + 12, y + 5);
             page.Controls.AddRange(new Control[] { icon, l });
-            y += 31;
+            y += 34;
         }
         static readonly string[] GameLanguages = { "Deutsch", "English", "Español", "Italiano", "Français" };
 
@@ -408,20 +424,15 @@ namespace BallanceHD
         {
             int y;
             var page = NewPage(T.Get("nav_game"), out y);
-            cbGameLang = Theme.Combo(200);
+            cbGameLang = Theme.Combo(260);
             cbGameLang.Items.AddRange(GameLanguages);
-            Row(page, ref y, T.Get("game_lang"), cbGameLang);
-            y += 6;
-            chkSkip = Theme.Check(T.Get("game_skip"));
-            CheckRow(page, ref y, chkSkip);
-            chkFps = Theme.Check(T.Get("game_fps"));
-            CheckRow(page, ref y, chkFps);
-            y += 10;
-            cbUiLang = Theme.Combo(200);
+            NewRow(page, ref y, T.Get("game_lang"), cbGameLang);
+            chkSkip = Toggle(page, ref y, T.Get("game_skip"));
+            chkFps = Toggle(page, ref y, T.Get("game_fps"));
+            y += 12;
+            cbUiLang = Theme.Combo(260);
             cbUiLang.Items.AddRange(new object[] { T.Get("lang_auto"), "Deutsch", "English" });
-            Row(page, ref y, T.Get("game_ui_lang"), cbUiLang);
-            y += 6;
-            Note(page, ref y, T.Get("game_save_hint"));
+            NewRow(page, ref y, T.Get("game_ui_lang"), cbUiLang);
             return page;
         }
 
@@ -429,7 +440,7 @@ namespace BallanceHD
         {
             int y;
             var page = NewPage(T.Get("nav_info"), out y);
-            var text = Theme.Label(T.Get("info_text", Version.BallancePlayer));
+            var text = Theme.Label(T.Get("info_text"));
             text.MaximumSize = new Size(640, 0);
             text.Location = new Point(28, y);
             page.Controls.Add(text);
@@ -558,6 +569,7 @@ namespace BallanceHD
                 return;
             var p = pads.Poll();
             var k = pads.Kind;
+            ShowPadHints(k);
             lblPadStatus.Text = k == PadKind.Xbox ? T.Get("pad_xbox") : k == PadKind.PlayStation ? T.Get("pad_sony") : T.Get("pad_none");
             lblPadStatus.ForeColor = k == PadKind.None ? Theme.TextDim : Theme.Good;
             if (k != PadKind.None)
@@ -570,8 +582,7 @@ namespace BallanceHD
             lastPad = p;
             if (!ContainsFocus || Form.ActiveForm != this || k == PadKind.None)
                 return;
-            if (status.Text == "")
-                SetStatus(T.Get("st_padnav"), Theme.TextDim);
+
             Func<ushort, bool> pressed = b => p.Has(b) && !last.Has(b);
             if (pressed(Pads.Start)) { Play(); return; }
             if (pressed(Pads.LB)) { ShowPage((page + pages.Count - 1) % pages.Count); FocusFirst(); return; }
@@ -607,7 +618,13 @@ namespace BallanceHD
         {
             var list = new List<Control>();
             Collect(pages[page], list);
-            list.Sort((a, b) => a.Top != b.Top ? a.Top.CompareTo(b.Top) : a.Left.CompareTo(b.Left));
+            // rows are nested panels: order by the position on screen
+            list.Sort((a, b) =>
+            {
+                var pa = a.PointToScreen(Point.Empty);
+                var pb = b.PointToScreen(Point.Empty);
+                return pa.Y != pb.Y ? pa.Y.CompareTo(pb.Y) : pa.X.CompareTo(pb.X);
+            });
             var bottom = new List<Control>();
             Collect(Controls.OfType<Panel>().Last(), bottom);
             bottom.Sort((a, b) => a.Left.CompareTo(b.Left));
@@ -661,6 +678,12 @@ namespace BallanceHD
 
         void Adjust(Control c, int step)
         {
+            var toggle = c as CheckBox;
+            if (toggle != null)
+            {
+                toggle.Checked = step > 0;
+                return;
+            }
             var combo = c as ComboBox;
             if (combo != null && combo.Enabled && combo.Items.Count > 0)
             {
@@ -733,9 +756,15 @@ namespace BallanceHD
         {
             Directory.CreateDirectory(folder);
             string[] names = { "graphics", "controller", "layout", "game", "about" };
+            // as with a controller: the hint bar and the second row of each page selected
+            padTimer.Stop();
+            ShowPadHints(PadKind.Xbox);
             for (int i = 0; i < pages.Count; i++)
             {
                 ShowPage(i);
+                var ring = FocusRing();
+                if (ring.Count > 1)
+                    ActiveControl = ring[1];
                 Refresh();
                 using (var bmp = new Bitmap(Width, Height))
                 {

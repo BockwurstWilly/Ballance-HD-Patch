@@ -1,4 +1,4 @@
-Ballance - HD Patch 2.0.1
+Ballance - HD Patch 2.1.0
 =========================
 
 DEUTSCH
@@ -62,8 +62,8 @@ Controller (Xbox, DualShock 4, DualSense - USB oder Bluetooth)
   am Levelanfang oben links eine Steuerungsübersicht - jeweils 10 Sekunden, dann blenden sie aus
   (in Menüs nach jedem Bestätigen/Zurück wieder). Xbox- oder PlayStation-Symbole je nach
   angeschlossenem Controller. Abschaltbar im Launcher.
-  Der Launcher selbst ist per Controller bedienbar: Steuerkreuz wählt, links/rechts ändert,
-  A bestätigt, LB/RB wechselt die Seite, Y übernimmt, Start startet das Spiel - ideal am TV.
+  Der Launcher selbst ist per Controller bedienbar (Tastenhinweise unten links): Steuerkreuz wählt,
+  links/rechts ändert, A bestätigt, LB/RB wechselt die Seite, Y übernimmt, Start spielt.
 Launcher
   Grafik: Bildschirm (Mehrschirm/TV), Anzeigemodus, Auflösung, Kantenglättung, Bildrate,
   Breitbild ohne Ränder. Controller: an/aus, Stick-Totzone, Belegung. Spiel: Sprache (DE, EN,
@@ -116,7 +116,7 @@ Controller (Xbox, DualShock 4, DualSense - USB or Bluetooth)
 Credits
   Presented by CompiWare - made by BockwurstWilly using Claude.
   BallancePlayer by doyaGu and the Ballance modding community (MIT).
-  In-game font: BML Sans SC (IBM Plex Sans SC, (c) IBM Corp.) - SIL Open Font License 1.1.
+  In-game texts of the plugin: the Windows font Segoe UI, rendered by the setup on your PC.
   UI Elements (button glyphs) by Mikkel Julian "Arks" Petersen - Arks @ScissorMarks,
   https://arks.itch.io - CC BY 4.0.
   Ballance (c) 2004 Cyparade / Atari, today Ziggurat Interactive. Unofficial fan project; it
