@@ -766,10 +766,14 @@ namespace BallanceHD
                 if (ring.Count > 1)
                     ActiveControl = ring[1];
                 Refresh();
+                // only the window's content, without the Windows title bar and border (screenshots for GitHub / the website)
                 using (var bmp = new Bitmap(Width, Height))
                 {
                     DrawToBitmap(bmp, new Rectangle(0, 0, Width, Height));
-                    bmp.Save(Path.Combine(folder, "launcher_" + names[i] + ".png"), System.Drawing.Imaging.ImageFormat.Png);
+                    var origin = PointToScreen(Point.Empty);
+                    var client = new Rectangle(origin.X - Left, origin.Y - Top, ClientSize.Width, ClientSize.Height);
+                    using (var content = bmp.Clone(client, bmp.PixelFormat))
+                        content.Save(Path.Combine(folder, "launcher_" + names[i] + ".png"), System.Drawing.Imaging.ImageFormat.Png);
                 }
             }
             Close();
