@@ -5,7 +5,7 @@ namespace BallanceHD
 {
     static class Version
     {
-        public const string Text = "1.3.0";
+        public const string Text = "1.3.1";
         public const string BallancePlayer = "0.3.9";
         public const string BmlPlus = "0.3.14";
     }

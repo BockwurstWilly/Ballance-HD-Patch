@@ -1,6 +1,6 @@
 [bml.mod id="compiware.ballancehd"
          name="Ballance HD"
-         version="1.3.0"
+         version="1.3.1"
          author="CompiWare / BockwurstWilly"
          description="Widescreen without bars; controller: stepless rolling, third-person camera, button prompts, settings in Options - Controls"
          bml="0.3.14"]
@@ -64,7 +64,6 @@ class BallanceHD {
     float camElev = 1.0097f;        // the game's default: 35 up, 22 back
     float camDist = 41.3f;
     float liftAmount = 0.0f;
-    float yawRate = 0.0f;
     bool camInit = false;
 
     // ---- settings panel in Options - Controls ----
@@ -342,7 +341,7 @@ class BallanceHD {
         sx += (lx - sx) * k;
         sy += (ly - sy) * k;
         float mag = Min(1.0f, sqrt(sx * sx + sy * sy));
-        const float dead = 0.14f;
+        const float dead = 0.12f;
         if (mag < dead) {
             if (++idleFrames > 3)
                 StopForce(ctx);
@@ -352,7 +351,7 @@ class BallanceHD {
         if (frame % 30 == 0)
             ReadBaseForce(ctx);       // the ball type may have changed
         float strength = (mag - dead) / (1.0f - dead);
-        strength = strength * (0.4f + 0.6f * strength);     // finer near the centre, full force at the edge
+        strength = strength * (0.5f + 0.5f * strength);     // finer near the centre, full force at the edge
         float f = baseForce * strength;
         float angle = atan2(sx, sy);
         float da = Abs(angle - lastAngle);
@@ -366,8 +365,10 @@ class BallanceHD {
         CK3dEntity@ oref = ctx.Borrow3dEntityByName("Cam_OrientRef");
         if (ball is null || oref is null)
             return;
-        // camera space: +Z away from the camera, +X to the right
-        if (BML::Physics::SetForce(ball, VxVector(0, 0, 0), null, VxVector(sx / mag, 0, sy / mag), oref, f)) {
+        // through the centre of the ball (position 0,0,0 relative to the ball, like the game's own force:
+        // anywhere else the force turns into torque and the ball spins); direction in camera space,
+        // +Z away from the camera, +X to the right
+        if (BML::Physics::SetForce(ball, VxVector(0, 0, 0), ball, VxVector(sx / mag, 0, sy / mag), oref, f)) {
             forceActive = true;
             lastAngle = angle;
             lastMag = f;
@@ -384,7 +385,6 @@ class BallanceHD {
 
     void Camera(const BML::ModContext &in ctx, bool playing) {
         if (!freeCamera || !playing || !PadOk()) {
-            yawRate = 0;
             return;
         }
         CK3dEntity@ oref = ctx.Borrow3dEntityByName("Cam_OrientRef");
@@ -403,37 +403,13 @@ class BallanceHD {
         float speed = cameraSpeed / 100.0f;
         const float dead = 0.16f;
 
-        // turning: the stick sets a target speed, the camera eases into it (no jerks)
-        float want = 0;
+        // turning follows the stick directly: it stops the moment the stick is let go
         if (Abs(rx) > dead) {
             float v = (Abs(rx) - dead) / (1.0f - dead);
-            want = v * v * (rx < 0 ? -1.0f : 1.0f) * 2.4f * speed;      // up to ~140°/s
-        }
-        yawRate += (want - yawRate) * Min(1.0f, dt * 10.0f);
-        float angle = yawRate * dt;
-        if (Abs(angle) > 0.00001f) {
-            VxVector o, f0, f1;
-            oref.GetPosition(o, null);
-            oref.Transform(f0, VxVector(0, 0, 1), null);
+            float angle = v * v * (rx < 0 ? -1.0f : 1.0f) * 2.4f * speed * dt;      // up to ~140°/s
             VxVector up(0, 1, 0);
             oref.Rotate(up, angle, null, false);
-            orient.Rotate(up, angle, null, false);
-            oref.Transform(f1, VxVector(0, 0, 1), null);
-            if (cam !is null) {
-                // the same turn for the delayed camera, around the ball (2D rotation in the ground plane)
-                float ax = f0.x - o.x, az = f0.z - o.z, bx = f1.x - o.x, bz = f1.z - o.z;
-                float n = ax * ax + az * az;
-                if (n > 0.000001f) {
-                    float c = (bx * ax + bz * az) / n, s = (bz * ax - bx * az) / n;
-                    VxVector t, p;
-                    target.GetPosition(t, null);
-                    cam.GetPosition(p, null);
-                    float vx = p.x - t.x, vz = p.z - t.z;
-                    p.x = t.x + vx * c - vz * s;
-                    p.z = t.z + vx * s + vz * c;
-                    cam.SetPosition(p, null, false);
-                }
-            }
+            orient.Rotate(up, angle, null, false);      // both frames: the game's own 90° turns keep working
         }
 
         // tilting: stick up looks up (the camera goes down and sees further ahead); InvertY swaps it
@@ -457,18 +433,12 @@ class BallanceHD {
         VxVector lp(0, d * sin(e), -d * cos(e));
         pos.SetPosition(lp, orient, false);
 
-        // a fixed distance like a third-person camera: the game lets InGameCam trail behind (it falls back
-        // when the ball speeds up and cuts corners when tilting); keep its direction, fix its distance
+        // the camera sits exactly on its point: fixed distance, no trailing, no springing (the target camera
+        // keeps looking at the ball by itself)
         if (cam !is null) {
-            VxVector t, p;
-            target.GetPosition(t, null);
-            cam.GetPosition(p, null);
-            float vx = p.x - t.x, vy = p.y - t.y, vz = p.z - t.z;
-            float len = sqrt(vx * vx + vy * vy + vz * vz);
-            if (len > 0.001f && Abs(len - d) > 0.01f) {
-                float k = d / len;
-                cam.SetPosition(VxVector(t.x + vx * k, t.y + vy * k, t.z + vz * k), null, false);
-            }
+            VxVector p;
+            pos.GetPosition(p, null);
+            cam.SetPosition(p, null, false);
         }
     }
 
@@ -718,15 +688,24 @@ class BallanceHD {
         bool inLevel = ctx.IsInLevel;
         bool paused = ctx.IsPaused;
         int state = !inLevel ? 0 : paused ? 1 : 2;
-        // the timer starts when a menu or level camera takes over (the game loads for a while before that)
-        int camId = 0;
-        CKRenderContext@ rc = ctx.BorrowRenderContext();
-        if (rc !is null && rc.GetAttachedCamera() !is null)
-            camId = rc.GetAttachedCamera().GetID();
-        if (camId != promptCam) {
-            promptCam = camId;
+        // menus: only while the game's menu column is on screen (M_BlackScreen) - not on the loading screens
+        // before the menu or a level; in a level: once the level camera has taken over
+        bool visible;
+        if (state == 2) {
+            CKRenderContext@ rc = ctx.BorrowRenderContext();
+            CKCamera@ ac = rc is null ? null : rc.GetAttachedCamera();
+            visible = ac !is null && BML::CK::GetName(ac) == "InGameCam";
+        } else {
+            CK2dEntity@ column = ctx.Borrow2dEntityByName("M_BlackScreen");
+            visible = column !is null && BML::CK::IsVisible(column);
+        }
+        int show = visible ? state : -1;
+        if (show != promptCam) {
+            promptCam = show;
             promptState = -1;
         }
+        if (!visible)
+            return;
         if (state != promptState || pad != lastPad) {
             promptState = state;
             lastPad = pad;
