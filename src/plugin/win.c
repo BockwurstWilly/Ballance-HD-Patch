@@ -433,7 +433,7 @@ void hd_init(void)
     CreateDirectoryA(hd_game_path("BallanceHD"), NULL);
     lstrcpynA(g_ini, hd_game_path("BallanceHD\\Settings.ini"), sizeof(g_ini));
     g_log = CreateFileA(hd_game_path("BallanceHD\\plugin.log"), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    hd_log("Ballance HD plugin 2.0.0");
+    hd_log("Ballance HD plugin 2.0.1");
     if (!GetEnvironmentVariableA("BALLANCEHD_FAKEPAD", g_fake, sizeof(g_fake)))
         g_fake[0] = 0;
 

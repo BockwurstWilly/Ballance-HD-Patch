@@ -171,17 +171,17 @@ public:
 private:
     Settings s;
     double now = 0, last = 0;
-    float dt = 0.016f;
+    float dt = 0.016f, rawDt = 0;
     int frame = 0;
 
     // ---- objects, looked up by name once (a name lookup walks through all objects) ----
     struct Cached { const char *name; CK_CLASSID cid; CK_ID id; int retry; };
-    enum { O_OREF, O_ORIENT, O_POS, O_TARGET, O_CAM, O_MENU, O_KEYSTITLE, O_LEVEL, O_INGAME, O_COUNT };
+    enum { O_OREF, O_ORIENT, O_POS, O_TARGET, O_CAM, O_MENU, O_KEYSTITLE, O_LEVEL, O_INGAME, O_LOADBAR, O_COUNT };
     Cached objs[O_COUNT] = {
         { "Cam_OrientRef", CKCID_3DENTITY, 0, 0 }, { "Cam_Orient", CKCID_3DENTITY, 0, 0 }, { "Cam_Pos", CKCID_3DENTITY, 0, 0 },
         { "Cam_Target", CKCID_3DENTITY, 0, 0 }, { "InGameCam", CKCID_TARGETCAMERA, 0, 0 },
         { "M_BlackScreen", CKCID_2DENTITY, 0, 0 }, { "M_Opt_Keys_Title", CKCID_2DENTITY, 0, 0 }, { "CurrentLevel", CKCID_DATAARRAY, 0, 0 },
-        { "Gameplay_Ingame", CKCID_BEHAVIOR, 0, 0 } };
+        { "Gameplay_Ingame", CKCID_BEHAVIOR, 0, 0 }, { "Ladebalken", CKCID_2DENTITY, 0, 0 } };
 
     CKObject *Obj(int i)
     {
@@ -209,7 +209,7 @@ private:
     // ---- game state ----
     bool inLevel = false, menu = false, paused = false, onControls = false, playing = false;
     CK_ID attachedCam = 0;
-    bool levelStart = false, tutorial = false, levelKnown = true;
+    bool levelStart = false, tutorial = false, levelKnown = true, navActive = false;
 
     // ---- controller ----
     hd_pad pad = {}, lastPad = {};
@@ -239,8 +239,11 @@ private:
     float camElev = 1.0097f, camDist = 41.3f, lift = 0;
     bool camInit = false;
     void Camera();
+    void DebugTrace();
 
-    // ---- widescreen ----
+    
+
+// ---- widescreen ----
     CKCamera *wideCam = NULL;
     int aspectW = 4, aspectH = 3;
     float fov = 0;
@@ -273,6 +276,7 @@ CKERROR BallanceHD::PreProcess()
     frame++;
     now = hd_time();
     dt = last > 0 ? (float)(now - last) : 0.016f;
+    rawDt = dt;
     if (dt <= 0 || dt > 0.1f)
         dt = 0.016f;
     last = now;
@@ -339,17 +343,25 @@ CKERROR BallanceHD::PreProcess()
 
     FrameLimit();
 
-    // the legend comes once per level, when the game hands over the ball (its "Ball Navigation" starts)
-    if (levelStart && playing && FindMoveBlock())
+    // the legend comes once per level, when the level appears: the loading bar is gone
+    if (levelStart && playing)
     {
-        CKBehavior *b = (CKBehavior *)m_Context->GetObject(moveBB);
-        CKBehavior *nav = b ? b->GetParent() : NULL;
-        if (nav && nav->IsActive())
+        CK2dEntity *bar = (CK2dEntity *)Obj(O_LOADBAR);
+        if (!(bar && bar->IsVisible()))
         {
             levelStart = false;
             legendTime = 0;
-            hd_log("level start: ball control on");
+            hd_logi("level start: legend", frame, 0);
         }
+    }
+    // the ball is the player's only while the game's "Ball Navigation" runs (not while it spawns or dies):
+    // a force set on the held ball piles up and shoots it off when it is let go
+    navActive = false;
+    if (inLevel && FindMoveBlock())
+    {
+        CKBehavior *b = (CKBehavior *)m_Context->GetObject(moveBB);
+        CKBehavior *nav = b ? b->GetParent() : NULL;
+        navActive = nav && nav->IsActive();
     }
 
     lastPad = pad;
@@ -386,6 +398,8 @@ CKERROR BallanceHD::PreProcess()
 
 CKERROR BallanceHD::PostProcess()
 {
+    if (s.trace)
+        DebugTrace();
     Roll();
     Camera();
     return CK_OK;
@@ -669,7 +683,7 @@ void BallanceHD::KeepPush()
 
 void BallanceHD::Roll()
 {
-    if (!s.analogRoll || !playing || pad.kind == HD_PAD_NONE || panelFocus || !FindMoveBlock())
+    if (!s.analogRoll || !playing || !navActive || pad.kind == HD_PAD_NONE || panelFocus || !FindMoveBlock())
     {
         sx = sy = 0;
         StopPush();
@@ -769,6 +783,46 @@ void BallanceHD::Camera()
         pos->GetPosition(&p, NULL);
         cam->SetPosition(&p, NULL, FALSE);
     }
+}
+
+// ---- test trace (Settings.ini [Debug] Trace=1): 2D elements shown / hidden, ball control, long frames ----
+void BallanceHD::DebugTrace()
+{
+    static CK_ID ids[2048];
+    static unsigned char vis[2048];
+    static int n = 0, lastNav = -1;
+    int count = m_Context->GetObjectsCountByClassID(CKCID_2DENTITY);
+    CK_ID *list = m_Context->GetObjectsListByClassID(CKCID_2DENTITY);
+    for (int i = 0; i < count && list; i++)
+    {
+        CK2dEntity *e = (CK2dEntity *)m_Context->GetObject(list[i]);
+        if (!e)
+            continue;
+        int v = e->IsVisible() ? 1 : 0, k = 0;
+        while (k < n && ids[k] != list[i]) k++;
+        if (k == n)
+        {
+            if (n >= 2048) continue;
+            ids[n] = list[i]; vis[n] = (unsigned char)v; n++;
+            if (v) { char b[96] = "2d shown (new): "; int p = 16; for (const char *c = e->GetName() ? e->GetName() : "?"; *c && p < 94; c++) b[p++] = *c; b[p] = 0; hd_logi(b, frame, 0); }
+            continue;
+        }
+        if (vis[k] != v)
+        {
+            vis[k] = (unsigned char)v;
+            char b[96] = "2d shown: "; int p = 10;
+            if (!v) { b[3] = 'h'; b[4] = 'i'; b[5] = 'd'; b[6] = 'd'; b[7] = 'e'; b[8] = 'n'; }
+            for (const char *c = e->GetName() ? e->GetName() : "?"; *c && p < 94; c++) b[p++] = *c;
+            b[p] = 0;
+            hd_logi(b, frame, 0);
+        }
+    }
+    int nav = -1;
+    CKBehavior *mb = (CKBehavior *)m_Context->GetObject(moveBB);
+    CKBehavior *navB = mb ? mb->GetParent() : NULL;
+    if (navB) nav = navB->IsActive() ? 1 : 0;
+    if (nav != lastNav) { hd_logi("ball navigation active", nav, frame); lastNav = nav; }
+    if (rawDt > 0.05f) hd_logi("long frame ms / frame", (int)(rawDt * 1000), frame);
 }
 
 // ---- widescreen --------------------------------------------------------------------------------
@@ -1149,7 +1203,7 @@ PLUGIN_EXPORT CKPluginInfo *CKGetPluginInfo(int index)
         g_info->m_Description = "Ballance HD";
         g_info->m_Author = "CompiWare / BockwurstWilly";
         g_info->m_Summary = "Widescreen, controller and HD features for Ballance";
-        g_info->m_Version = 0x020000;
+        g_info->m_Version = 0x020001;
         g_info->m_InitInstanceFct = InitInstance;
         g_info->m_ExitInstanceFct = ExitInstance;
         g_info->m_Type = CKPLUGIN_MANAGER_DLL;
