@@ -5,7 +5,7 @@ namespace BallanceHD
 {
     static class Version
     {
-        public const string Text = "1.1.0";
+        public const string Text = "1.2.0";
         public const string BallancePlayer = "0.3.9";
         public const string BmlPlus = "0.3.14";
     }
@@ -47,6 +47,7 @@ namespace BallanceHD
             // launcher frame
             { "nav_gfx", new[] { "Grafik", "Graphics" } },
             { "nav_pad", new[] { "Controller", "Controller" } },
+            { "nav_map", new[] { "Belegung", "Layout" } },
             { "nav_game", new[] { "Spiel", "Game" } },
             { "nav_info", new[] { "Info", "About" } },
             { "motto", new[] { "„Balance ist alles.“", "\"Balance is everything.\"" } },
@@ -85,6 +86,16 @@ namespace BallanceHD
             { "pad_xbox", new[] { "Xbox-Controller verbunden.", "Xbox controller connected." } },
             { "pad_sony", new[] { "PlayStation-Controller verbunden.", "PlayStation controller connected." } },
             { "pad_prompts", new[] { "Tastensymbole im Spiel einblenden (Menüs, Pause, Levelstart)", "Show button prompts in the game (menus, pause, level start)" } },
+            { "pad_analog", new[] { "Kugel stufenlos rollen (linker Stick)", "Roll the ball steplessly (left stick)" } },
+            { "pad_freecam", new[] { "Freie Kamera (rechter Stick: stufenlos drehen und neigen)", "Free camera (right stick: turn and tilt steplessly)" } },
+            { "pad_invert", new[] { "Kamera-Neigung umkehren", "Invert camera tilt" } },
+            { "pad_camspeed", new[] { "Kamera-Tempo", "Camera speed" } },
+            { "pad_ingame_hint", new[] { "Diese Einstellungen und die Tastenbelegung gibt es auch im Spiel: Optionen → Mods → Ballance HD.", "These settings and the button layout are also in the game: Options → Mods → Ballance HD." } },
+            { "pad_launcher_hint", new[] { "Launcher mit dem Controller: Steuerkreuz wählt aus, links/rechts ändert, A bestätigt, LB/RB wechselt die Seite, Y übernimmt, Start spielt.", "The launcher with a controller: d-pad selects, left/right changes, A confirms, LB/RB switch pages, Y applies, Start plays." } },
+            { "act_freecam", new[] { "Kamera frei drehen und neigen", "Turn and tilt the camera" } },
+            { "map_reset", new[] { "Standardbelegung", "Default layout" } },
+            { "map_hint", new[] { "Linker Stick und Steuerkreuz bewegen auch in den Menüs. Im Spiel: Optionen → Mods → Ballance HD.", "Left stick and d-pad also move through the menus. In the game: Options → Mods → Ballance HD." } },
+            { "st_padnav", new[] { "Controller: LB/RB Seite · A wählen · Start spielen", "Controller: LB/RB page · A select · Start play" } },
             { "pad_dead", new[] { "Stick-Totzone", "Stick dead zone" } },
             { "pad_layout", new[] { "Belegung", "Layout" } },
             { "pad_layout_hint", new[] { "Gilt für die Standard-Tasten des Spiels.", "Uses the game's default keys." } },

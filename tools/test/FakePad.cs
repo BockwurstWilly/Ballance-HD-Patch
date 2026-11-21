@@ -1,0 +1,6 @@
+// FakePad.exe <pad.bin> <kind 1|2> step... ; step = ms:lx,ly,rx,ry[,buttonsHex]  - writes pad.bin like the launcher (125 Hz)
+using System;using System.IO;using System.Threading;
+class FakePad{static void Main(string[] a){int kind=int.Parse(a[1]);int seq=0;var buf=new byte[32];
+ for(int i=2;i<a.Length;i++){var p=a[i].Split(':');int ms=int.Parse(p[0]);var v=p[1].Split(',');float lx=float.Parse(v[0],System.Globalization.CultureInfo.InvariantCulture),ly=float.Parse(v[1],System.Globalization.CultureInfo.InvariantCulture),rx=float.Parse(v[2],System.Globalization.CultureInfo.InvariantCulture),ry=float.Parse(v[3],System.Globalization.CultureInfo.InvariantCulture);int b=v.Length>4?Convert.ToInt32(v[4],16):0;
+  var end=DateTime.UtcNow.AddMilliseconds(ms);while(DateTime.UtcNow<end){seq++;BitConverter.GetBytes(seq).CopyTo(buf,0);BitConverter.GetBytes(lx).CopyTo(buf,4);BitConverter.GetBytes(ly).CopyTo(buf,8);BitConverter.GetBytes(rx).CopyTo(buf,12);BitConverter.GetBytes(ry).CopyTo(buf,16);BitConverter.GetBytes(b).CopyTo(buf,20);BitConverter.GetBytes(kind).CopyTo(buf,24);BitConverter.GetBytes(seq).CopyTo(buf,28);try{using(var fs=new FileStream(a[0],FileMode.OpenOrCreate,FileAccess.Write,FileShare.Read|FileShare.Delete))fs.Write(buf,0,32);}catch(IOException){}Thread.Sleep(8);}}
+}}

@@ -61,6 +61,7 @@ $glyphs = @{
         start = 'Digital Buttons\System\button_xbox_digital_menu_1.png'; back = 'Digital Buttons\System\button_xbox_digital_view_1.png'
         dpad = 'D-Pad\button_xbox_dpad_light_7.png'; lstick = 'Analog Sticks\Left\button_xbox_analog_l_direction_11.png'
         rstick_lr = 'Analog Sticks\Right\button_xbox_analog_r_direction_10.png'; rstick_up = 'Analog Sticks\Right\button_xbox_analog_r_direction_1.png'
+        rstick = 'Analog Sticks\Right\button_xbox_analog_r_direction_11.png'; l3 = 'Analog Sticks\Left\button_xbox_analog_l.png'; r3 = 'Analog Sticks\Right\button_xbox_analog_r.png'
     }
     ps = @{
         a = 'Main Buttons\Button - PS Cross 1.png'; b = 'Main Buttons\Button - PS Circle 1.png'
@@ -70,6 +71,7 @@ $glyphs = @{
         start = 'Other Inputs\Button - PS Options.png'; back = 'Other Inputs\Button - PS Share.png'
         dpad = 'Directional Arrows\Button - PS Directional Arrows.png'; lstick = 'Analogue L Inputs\Button - PS Analogue L Up Down Left Right.png'
         rstick_lr = 'Analogue R Inputs\Button - PS Analogue R Left Right.png'; rstick_up = 'Analogue R Inputs\Button - PS Analogue R Up.png'
+        rstick = 'Analogue R Inputs\Button - PS Analogue R Up Down Left Right.png'; l3 = 'R and L Inputs\Button - PS L3.png'; r3 = 'R and L Inputs\Button - PS R3.png'
     }
 }
 $glyphOut = Join-Path $obj 'glyphs'

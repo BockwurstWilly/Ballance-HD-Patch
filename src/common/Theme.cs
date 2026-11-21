@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -74,13 +74,16 @@ namespace BallanceHD
             {
                 bool face = (e.State & DrawItemState.ComboBoxEdit) != 0;
                 bool sel = (e.State & DrawItemState.Selected) != 0 && !face;
-                using (var b = new SolidBrush(sel ? Accent : PanelLight))
+                // the closed box shows its keyboard / controller focus in the accent colour
+                using (var b = new SolidBrush(sel ? Accent : face && cb.Focused ? AccentDark : PanelLight))
                     e.Graphics.FillRectangle(b, e.Bounds);
                 if (e.Index >= 0)
                     TextRenderer.DrawText(e.Graphics, cb.Items[e.Index].ToString(), cb.Font,
                         new Rectangle(e.Bounds.X + 4, e.Bounds.Y, e.Bounds.Width - 4, e.Bounds.Height),
                         cb.Enabled ? Text : TextDim, TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
             };
+            cb.GotFocus += (o, e) => cb.Invalidate();
+            cb.LostFocus += (o, e) => cb.Invalidate();
             return cb;
         }
 
@@ -174,6 +177,12 @@ namespace BallanceHD
         protected override void OnTextChanged(EventArgs e) { Invalidate(); base.OnTextChanged(e); }
         protected override void OnGotFocus(EventArgs e) { Invalidate(); base.OnGotFocus(e); }
         protected override void OnLostFocus(EventArgs e) { Invalidate(); base.OnLostFocus(e); }
+
+        public void PerformClick()
+        {
+            if (Enabled)
+                OnClick(EventArgs.Empty);
+        }
 
         protected override void OnKeyDown(KeyEventArgs e)
         {

@@ -216,7 +216,7 @@ namespace BallanceHD
         public void Save()
         {
             if (lines.Count == 0 || !lines[0].StartsWith("#"))
-                lines.Insert(0, "# Configuration File for Mod: Ballance Mod Loader - written by the Ballance HD launcher");
+                lines.Insert(0, "# Configuration File - written by the Ballance HD launcher");
             var text = string.Join("\r\n", lines) + "\r\n";
             FileUtil.WriteAtomic(path, new UTF8Encoding(false).GetBytes(text));
         }

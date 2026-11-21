@@ -15,6 +15,77 @@ namespace BallanceHD
         public short LX, LY, RX, RY;     // y grows upwards
 
         public bool Has(ushort b) { return (Buttons & b) != 0; }
+
+        /// <summary>Buttons plus the triggers as two extra bits (Pads.LTrigger / Pads.RTrigger).</summary>
+        public bool HasMask(int mask)
+        {
+            if (mask == 0)
+                return false;
+            int all = Buttons | (LeftTrigger > 100 ? Pads.LTrigger : 0) | (RightTrigger > 100 ? Pads.RTrigger : 0);
+            return (all & mask) != 0;
+        }
+    }
+
+    /// <summary>
+    /// The live controller state for the game mod: ModLoader\BallanceHD\pad.bin, 32 bytes, rewritten with every poll.
+    ///   int seq, float lx, float ly, float rx, float ry (-1..1, y up), int buttons, int kind (0 none, 1 Xbox, 2 PlayStation), int seq
+    /// The mod reads it every frame (it can read files, not shared memory); the sequence number at both ends lets it
+    /// drop a torn read, an unchanged one tells it the launcher is gone.
+    /// </summary>
+    sealed class PadLink : IDisposable
+    {
+        public const string File = @"ModLoader\BallanceHD\pad.bin";
+        readonly string path;
+        readonly byte[] buf = new byte[32];
+        int seq;
+
+        // the file is opened for every write only: the game's reader does not share write access
+        public PadLink(string dir)
+        {
+            path = Path.Combine(dir, File);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+        }
+
+        static float Axis(short v) { return Math.Max(-1f, v / 32767f); }
+
+        public void Write(PadState s, PadKind kind)
+        {
+            seq++;
+            Put(0, seq);
+            Put(4, Axis(s.LX));
+            Put(8, Axis(s.LY));
+            Put(12, Axis(s.RX));
+            Put(16, Axis(s.RY));
+            Put(20, s.Buttons | (s.LeftTrigger > 100 ? Pads.LTrigger : 0) | (s.RightTrigger > 100 ? Pads.RTrigger : 0));
+            Put(24, kind == PadKind.Xbox ? 1 : kind == PadKind.PlayStation ? 2 : 0);
+            Put(28, seq);
+            try
+            {
+                using (var fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read | FileShare.Delete))
+                    fs.Write(buf, 0, 32);
+            }
+            catch (IOException)
+            {
+                // the game is reading it right now: the next poll writes again
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+        }
+
+        void Put(int at, int v) { BitConverter.GetBytes(v).CopyTo(buf, at); }
+        void Put(int at, float v) { BitConverter.GetBytes(v).CopyTo(buf, at); }
+
+        public void Dispose()
+        {
+            try
+            {
+                Write(new PadState(), PadKind.None);
+            }
+            catch (Exception)
+            {
+            }
+        }
     }
 
     enum PadKind { None, Xbox, PlayStation }
@@ -28,6 +99,7 @@ namespace BallanceHD
         public const ushort DPadUp = 0x0001, DPadDown = 0x0002, DPadLeft = 0x0004, DPadRight = 0x0008;
         public const ushort Start = 0x0010, Back = 0x0020, LThumb = 0x0040, RThumb = 0x0080;
         public const ushort LB = 0x0100, RB = 0x0200, A = 0x1000, B = 0x2000, X = 0x4000, Y = 0x8000;
+        public const int LTrigger = 0x10000, RTrigger = 0x20000;
 
         // ---- XInput ----------------------------------------------------------------------------------
 
@@ -306,10 +378,49 @@ namespace BallanceHD
         public PadKind Kind { get; private set; }
 
         /// <summary>Polls all pads and returns the merged state (buttons ORed, the strongest stick wins).</summary>
+        // tests: BALLANCEHD_FAKEPAD=<file in the PadLink format> replaces the real controllers
+        static readonly string fakePad = Environment.GetEnvironmentVariable("BALLANCEHD_FAKEPAD");
+
+        static bool ReadFake(out PadState s, out PadKind kind)
+        {
+            s = new PadState();
+            kind = PadKind.None;
+            try
+            {
+                byte[] b;
+                using (var fs = new FileStream(fakePad, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                {
+                    b = new byte[32];
+                    if (fs.Read(b, 0, 32) != 32)
+                        return false;
+                }
+                Func<int, short> axis = at => (short)Math.Max(-32767, Math.Min(32767, BitConverter.ToSingle(b, at) * 32767));
+                s.LX = axis(4); s.LY = axis(8); s.RX = axis(12); s.RY = axis(16);
+                int buttons = BitConverter.ToInt32(b, 20);
+                s.Buttons = (ushort)(buttons & 0xFFFF);
+                s.LeftTrigger = (byte)((buttons & LTrigger) != 0 ? 255 : 0);
+                s.RightTrigger = (byte)((buttons & RTrigger) != 0 ? 255 : 0);
+                int k = BitConverter.ToInt32(b, 24);
+                kind = k == 1 ? PadKind.Xbox : k == 2 ? PadKind.PlayStation : PadKind.None;
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         public PadState Poll()
         {
             var m = new PadState();
             Kind = PadKind.None;
+            if (!string.IsNullOrEmpty(fakePad))
+            {
+                PadKind fk;
+                ReadFake(out m, out fk);
+                Kind = fk;
+                return m;
+            }
             bool rescanX = ++xRetry >= 120;   // disconnected XInput slots are slow to query: only every ~second
             if (rescanX)
                 xRetry = 0;
