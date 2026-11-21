@@ -1,6 +1,6 @@
 # Ballance – HD Patch & Launcher
 
-Unofficial HD patch with its own launcher for **Ballance** (GOG / Steam) on Windows 10/11. One setup, and the game runs borderless at your monitor's native resolution in real widescreen, with even VSync frames and full Xbox / PlayStation controller support – stepless rolling, a free third-person camera and button prompts in the game. Uninstalling restores the game folder byte for byte.
+Unofficial HD patch with its own launcher for **Ballance** (GOG / Steam) on Windows 10/11. One setup, and the game runs borderless at your monitor's native resolution in real widescreen, with even VSync frames and full Xbox / PlayStation controller support – stepless rolling, a free third-person camera and button prompts in the game. The official bonus level 13 "SuDu" from 2004 can be added during setup. Uninstalling restores the game folder byte for byte.
 
 Inoffizieller HD-Patch mit Launcher für Ballance (GOG / Steam) – deutsche Kurzfassung unten.
 
@@ -30,6 +30,7 @@ Inoffizieller HD-Patch mit Launcher für Ballance (GOG / Steam) – deutsche Kur
 
 1. Download `BallanceHD_Patch_<version>.zip` from [Releases](../../releases), unzip it and run `BallanceHD_Setup.exe`. It finds the game (GOG / Steam registry, desktop shortcut) and checks the game files. No administrator rights, no extra runtimes.
 2. Play via **"Ballance - HD Launcher"** (recommended – graphics and language are set there). Started directly from GOG Galaxy the game still runs in HD with the controller, using the settings last saved in the launcher.
+   **Bonus level 13 "SuDu"** (option in the setup, on by default): needs an Internet connection. The patch ships no game files, so the setup downloads the original add-on from the archived Ballance website (web.archive.org), checks it and installs the level. Without it, only the bonus is missing; running the setup again adds it later. In the game it appears on the level selection screen (the "BONUS" panel – X / Square or a mouse click).
 3. Uninstall via Windows "Apps & Features", the start menu or the launcher's About page – every original file comes back; save games and high scores (`Database.tdb`) are never touched.
 
 An update from 1.x keeps settings and button layout and removes the old BML+ mod loader.
@@ -101,7 +102,7 @@ Presented by CompiWare · Made by BockwurstWilly using Claude · Licence: [PolyF
 
 ## Deutsch (Kurzfassung)
 
-Inoffizieller HD-Patch mit Launcher für **Ballance** (GOG / Steam) unter Windows 10/11: randloses Vollbild in nativer Auflösung, echtes Breitbild ohne Ränder, gleichmäßige Bilder mit VSync und volle Unterstützung für Xbox- und PlayStation-Controller – Kugel stufenlos rollen, freie Kamera, Tastensymbole im Spiel und Controller-Einstellungen unter Optionen → Steuerung.
+Inoffizieller HD-Patch mit Launcher für **Ballance** (GOG / Steam) unter Windows 10/11: randloses Vollbild in nativer Auflösung, echtes Breitbild ohne Ränder, gleichmäßige Bilder mit VSync und volle Unterstützung für Xbox- und PlayStation-Controller – Kugel stufenlos rollen, freie Kamera, Tastensymbole im Spiel und Controller-Einstellungen unter Optionen → Steuerung. Dazu auf Wunsch das offizielle Bonus-Level 13 „SuDu“ von 2004 in der Levelauswahl (das Setup lädt es von der archivierten Ballance-Webseite, dafür ist eine Internetverbindung nötig).
 
 **Installation:** `BallanceHD_Patch_<Version>.zip` unter [Releases](../../releases) laden, entpacken, `BallanceHD_Setup.exe` starten. Danach am besten über **„Ballance - HD Launcher“** spielen. Deinstallation über „Apps & Features“ – alle Originaldateien kommen zurück, Spielstände bleiben erhalten.
 
