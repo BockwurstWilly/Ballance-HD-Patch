@@ -45,6 +45,7 @@ void hd_pad_poll(hd_pad *out);
 void hd_key(unsigned short scan, int down);
 void hd_release_keys(void);
 int hd_game_in_front(void);
+int hd_mouse_click(int *x, int *y);           /* left click in the game window (client pixels) */
 
 #ifdef __cplusplus
 }

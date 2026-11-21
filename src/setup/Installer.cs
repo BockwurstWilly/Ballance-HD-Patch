@@ -1,10 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Security.Principal;
 using Microsoft.Win32;
 
@@ -14,6 +16,7 @@ namespace BallanceHD
     {
         public bool DesktopShortcut = true;
         public bool StartMenuShortcut = true;
+        public bool BonusLevel = true;        // official add-on level 13, downloaded from the archived Ballance website
     }
 
     /// <summary>
@@ -83,6 +86,7 @@ namespace BallanceHD
                 foreach (var e in zip.Entries)
                     if (!e.FullName.EndsWith("/") && !e.FullName.StartsWith("doc/", StringComparison.OrdinalIgnoreCase))
                         payload.Add(e.FullName.Replace('/', '\\'));
+            payload.Add(BonusFile);     // the bonus level is downloaded, not in the payload: handled by Bonus()
             if (update)
             {
                 RemoveObsolete(dir, backup, files, payload, state);
@@ -135,6 +139,7 @@ namespace BallanceHD
                 }
             }
             // the plugin's in-game font, rendered here from the Windows font (no font file is shipped)
+            Bonus(dir, files, o.BonusLevel);
             FontAtlas.Make(dir);
             files.Add(FontAtlas.Tga);
             files.Add(FontAtlas.Bin);
@@ -202,6 +207,72 @@ namespace BallanceHD
             WriteList(dir, files);
         }
 
+        // ---- bonus level 13 -------------------------------------------------------------------------
+        // The official add-on level "SuDu" (Cyparade, 2004) was a free download on ballance.org. The patch ships
+        // no game files, so the setup fetches the original archive from the Internet Archive, checks it and
+        // installs only the level file; the HD plugin adds the level to the game at run time.
+        public const string BonusFile = @"3D Entities\Level\Level_13.NMO";
+        const string BonusUrl = "https://web.archive.org/web/2007id_/http://www.ballance.org/movies4/SuDu__BallanceLv13.zip";
+        const string BonusSha256 = "A1E5C17BB478FB02A05DF4672CD6C7DA6AA1858AA6B433909ED6B34428F1903D";
+        const string BonusEntry = "SuDu_BallanceLv13/3D Entities/Level/Level_13.NMO";
+
+        void Bonus(string dir, HashSet<string> files, bool wanted)
+        {
+            var target = Path.Combine(dir, BonusFile);
+            bool ours = files.Contains(BonusFile);
+            if (!wanted)
+            {
+                if (ours)
+                {
+                    Delete(target);
+                    files.Remove(BonusFile);
+                }
+                return;
+            }
+            if (File.Exists(target))
+            {
+                if (!ours)
+                    log(T.Get("log_bonus_own"));   // installed by hand earlier: not the patch's file
+                return;
+            }
+            files.Remove(BonusFile);
+            log(T.Get("log_bonus_load"));
+            try
+            {
+                ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;   // TLS 1.2
+                byte[] zip;
+                using (var web = new WebClient())
+                {
+                    web.Headers[HttpRequestHeader.UserAgent] = "BallanceHD-Setup/" + Version.Text;
+                    zip = web.DownloadData(BonusUrl);
+                }
+                string hash;
+                using (var sha = SHA256.Create())
+                    hash = BitConverter.ToString(sha.ComputeHash(zip)).Replace("-", "");
+                if (hash != BonusSha256)
+                    throw new InvalidDataException("SHA256 " + hash);
+                using (var archive = new ZipArchive(new MemoryStream(zip), ZipArchiveMode.Read))
+                {
+                    var entry = archive.GetEntry(BonusEntry);
+                    if (entry == null)
+                        throw new InvalidDataException(BonusEntry);
+                    using (var es = entry.Open())
+                    using (var ms = new MemoryStream())
+                    {
+                        es.CopyTo(ms);
+                        Directory.CreateDirectory(Path.GetDirectoryName(target));
+                        FileUtil.WriteAtomic(target, ms.ToArray());
+                    }
+                }
+                files.Add(BonusFile);
+                log(T.Get("log_bonus_done"));
+            }
+            catch (Exception ex)
+            {
+                // no Internet (or the archive is unreachable): everything else is installed, only the bonus is missing
+                log(T.Get("log_bonus_fail", ex.Message));
+            }
+        }
         /// <summary>The language the original game was set to (GOG writes it to the registry), else Windows'.</summary>
         static int OriginalLanguage(int fallback)
         {

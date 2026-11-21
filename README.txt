@@ -1,4 +1,4 @@
-Ballance - HD Patch 2.1.0
+Ballance - HD Patch 2.2.0
 =========================
 
 DEUTSCH
@@ -11,6 +11,10 @@ Installation
   "Ballance - HD Launcher" (Desktop / Startmenü / Spielordner) starten.
   Es wird nichts zusätzlich benötigt (keine Visual-C++-Laufzeit, keine Administratorrechte).
   Ein Update von 1.x übernimmt Einstellungen und Tastenbelegung und entfernt den alten Mod Loader.
+  Option "Bonus-Level 13 SuDu hinzufügen" (Standard: an): braucht eine Internetverbindung. Das
+  offizielle Zusatzlevel von 2004 wird von der archivierten Ballance-Webseite (web.archive.org) geladen
+  und geprüft, weil der Patch keine Spieldateien mitliefert. Ohne Haken oder ohne Internet fehlt nur
+  dieser Bonus; ein erneutes Setup kann ihn nachholen.
   Deinstallation: Startmenü "Ballance - HD-Patch entfernen", Launcher -> Info -> "HD-Patch
   entfernen", Windows "Apps & Features" oder das Setup erneut starten. Alle Originaldateien
   werden wiederhergestellt; Spielstände und Highscores (Database.tdb) bleiben unangetastet.
@@ -37,6 +41,9 @@ Was der Patch macht
   * 32-Bit-Texturen statt 16 Bit (kein Farbbanding am Himmel), Kantenglättung bis 8x MSAA.
   * Randloses Vollbild in nativer Auflösung (empfohlen): kein Tearing, Alt+Tab ohne Flackern.
     Im exklusiven Vollbild wirkt VSync unter Direct3D 8 nicht - dort begrenzt das Plugin die Bildrate.
+  * Bonus-Level 13 "SuDu" (offizielles Zusatzlevel von 2004) in der Levelauswahl: rechts das Feld
+    "BONUS", Start mit X / Quadrat oder per Mausklick. Anders als das Original von 2004 ersetzt der
+    Patch dafür keine Spieldateien; das Plugin fügt das Level beim Spielen hinzu.
   * Kein "DirectPlay installieren?"-Fenster mehr beim Start (das Spiel lädt dpnhpast.dll nur
     zur DirectX-Versionsprüfung; der Patch legt dafür eine leere DLL in den Ordner Bin).
   * dgVoodoo 2.79 (von GOG/Steam mitgeliefert) wird abgeschaltet: mit dem neuen Player zeichnet
@@ -81,6 +88,9 @@ Installation
   game files and installs. Then start Ballance with "Ballance - HD Launcher".
   Nothing else is needed (no Visual C++ runtime, no administrator rights). An update from 1.x
   keeps your settings and button layout and removes the old mod loader.
+  Option "Add bonus level 13 SuDu" (on by default) needs an Internet connection: the official add-on
+  level from 2004 is downloaded from the archived Ballance website (web.archive.org) and checked,
+  because the patch ships no game files. Without it, only this bonus is missing.
   Uninstall: start menu "Ballance - Remove HD Patch", launcher -> About, Apps & Features, or run
   the setup again. All original files are restored; save games / high scores are never touched.
 
@@ -100,6 +110,9 @@ What it does
     micro-stutter), controller support, button prompts and controller settings in the game.
   * 32-bit textures instead of 16-bit, anti-aliasing up to 8x MSAA.
   * Borderless fullscreen at native resolution (default): no tearing, smooth Alt+Tab.
+  * Bonus level 13 "SuDu" (official add-on from 2004) on the level selection screen: the "BONUS"
+    panel on the right, start with X / Square or a mouse click. Unlike the 2004 add-on, no game files
+    are replaced; the plugin adds the level while you play.
   * No more "install DirectPlay?" prompt (empty dpnhpast.dll in Bin).
   * dgVoodoo 2.79 shipped by GOG/Steam is disabled (draws menus and sky black with the new
     player); Bin\D3D8.dll is backed up and restored on uninstall.

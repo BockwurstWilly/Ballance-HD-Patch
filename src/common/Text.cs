@@ -5,7 +5,7 @@ namespace BallanceHD
 {
     static class Version
     {
-        public const string Text = "2.1.0";
+        public const string Text = "2.2.0";
         public const string BallancePlayer = "0.3.9";
     }
 
@@ -146,6 +146,8 @@ namespace BallanceHD
             { "su_browse_desc", new[] { "Ordner von Ballance wählen (enthält base.cmo und den Ordner Bin)", "Choose the Ballance folder (contains base.cmo and the Bin folder)" } },
             { "su_desktop", new[] { "Verknüpfung auf dem Desktop", "Desktop shortcut" } },
             { "su_startmenu", new[] { "Einträge im Startmenü", "Start menu entries" } },
+            { "su_bonus", new[] { "Bonus-Level 13 „SuDu“ hinzufügen", "Add bonus level 13 \"SuDu\"" } },
+            { "su_bonus_note", new[] { "Braucht eine Internetverbindung: Das offizielle Zusatzlevel von 2004 (2,2 MB) wird von der archivierten Ballance-Webseite geladen, weil der Patch keine Spieldateien mitliefert. Ohne Haken fehlt nur dieser Bonus.", "Needs an Internet connection: the official add-on level from 2004 (2.2 MB) is downloaded from the archived Ballance website, because the patch ships no game files. Without it, only this bonus is missing." } },
             { "su_install", new[] { "INSTALLIEREN", "INSTALL" } },
             { "su_update", new[] { "AKTUALISIEREN", "UPDATE" } },
             { "su_uninstall", new[] { "Entfernen", "Remove" } },
@@ -166,6 +168,10 @@ namespace BallanceHD
             { "log_settings", new[] { "Grafik eingestellt: {0} × {1}, {2} Hz mit VSync, randlos", "Graphics set: {0} × {1}, {2} Hz with vsync, borderless" } },
             { "log_shortcuts", new[] { "Verknüpfungen angelegt.", "Shortcuts created." } },
             { "log_done", new[] { "Fertig.", "Done." } },
+            { "log_bonus_load", new[] { "Lade Bonus-Level 13 von web.archive.org …", "Downloading bonus level 13 from web.archive.org …" } },
+            { "log_bonus_done", new[] { "Bonus-Level 13 installiert.", "Bonus level 13 installed." } },
+            { "log_bonus_fail", new[] { "Bonus-Level 13 konnte nicht geladen werden ({0}). Alles andere ist installiert; das Setup kann es später nachholen.", "Bonus level 13 could not be downloaded ({0}). Everything else is installed; run the setup again later to add it." } },
+            { "log_bonus_own", new[] { "Bonus-Level 13 ist bereits vorhanden (selbst installiert) – bleibt unverändert.", "Bonus level 13 is already present (installed by hand) – left as it is." } },
             { "log_restore", new[] { "wiederhergestellt: {0}", "restored: {0}" } },
             { "log_delete", new[] { "entfernt: {0}", "removed: {0}" } },
             { "log_leftover", new[] { "Ordner {0} konnte nicht gelöscht werden: {1}", "Could not delete folder {0}: {1}" } },

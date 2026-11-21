@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Windows.Forms;
 namespace BallanceHD
 {
     /// <summary>
-    /// BallanceHD_Setup.exe [/install | /uninstall] [/dir="..."] [/silent] [/nodesktop] [/nostartmenu]
+    /// BallanceHD_Setup.exe [/install | /uninstall] [/dir="..."] [/silent] [/nodesktop] [/nostartmenu] [/nobonus]
     /// Without /install or /uninstall the setup window opens.
     /// </summary>
     static class Program
@@ -139,12 +139,13 @@ namespace BallanceHD
             {
                 DesktopShortcut = !Has(args, "/nodesktop"),
                 StartMenuShortcut = !Has(args, "/nostartmenu"),
+                BonusLevel = !Has(args, "/nobonus"),
             };
         }
 
         public static string OptionArgs(InstallOptions o)
         {
-            return (o.DesktopShortcut ? "" : " /nodesktop") + (o.StartMenuShortcut ? "" : " /nostartmenu");
+            return (o.DesktopShortcut ? "" : " /nodesktop") + (o.StartMenuShortcut ? "" : " /nostartmenu") + (o.BonusLevel ? "" : " /nobonus");
         }
 
         static bool Has(string[] args, string flag)

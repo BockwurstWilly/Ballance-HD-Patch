@@ -411,6 +411,23 @@ int hd_game_in_front(void)
     return pid == GetCurrentProcessId();
 }
 
+/* left mouse button newly pressed in the game window: position in client pixels (only while the game is in front) */
+int hd_mouse_click(int *x, int *y)
+{
+    static int was = 0;
+    HWND w = GetForegroundWindow();
+    DWORD pid = 0;
+    POINT pt;
+    int down = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0, click;
+    click = down && !was;
+    was = down;
+    GetWindowThreadProcessId(w, &pid);
+    if (!click || pid != GetCurrentProcessId() || !GetCursorPos(&pt) || !ScreenToClient(w, &pt))
+        return 0;
+    *x = pt.x;
+    *y = pt.y;
+    return 1;
+}
 /* ---- start / stop ---------------------------------------------------------------------------- */
 
 void hd_init(void)
@@ -433,7 +450,7 @@ void hd_init(void)
     CreateDirectoryA(hd_game_path("BallanceHD"), NULL);
     lstrcpynA(g_ini, hd_game_path("BallanceHD\\Settings.ini"), sizeof(g_ini));
     g_log = CreateFileA(hd_game_path("BallanceHD\\plugin.log"), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    hd_log("Ballance HD plugin 2.1.0");
+    hd_log("Ballance HD plugin 2.2.0");
     if (!GetEnvironmentVariableA("BALLANCEHD_FAKEPAD", g_fake, sizeof(g_fake)))
         g_fake[0] = 0;
 

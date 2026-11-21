@@ -20,6 +20,7 @@ Inoffizieller HD-Patch mit Launcher für Ballance (GOG / Steam) – deutsche Kur
 | Camera | the right stick turns and tilts the camera freely around the ball at a fixed distance; View / Share steps through four distances; LB / RB keep the game's 90° turns |
 | Prompts | Xbox or PlayStation button glyphs in menus and the pause menu, a controls legend at level start; both fade out after 10 seconds |
 | Settings in the game | Options → Controls gets a controller panel (Y to edit): stepless rolling, free camera, invert tilt, camera speed and distance, button layout |
+| Bonus level | the official add-on level 13 "SuDu" (2004), downloaded during setup from the Internet Archive (optional, needs Internet). The plugin adds it to the game at run time – unlike the original add-on, no game files are replaced |
 | Fixes | no "install DirectPlay?" prompt (empty `dpnhpast.dll`); GOG's dgVoodoo 2.79, which draws menus and sky black with the new player, is disabled (backed up) |
 | Launcher | graphics, controller, button layout, game language; fully usable with a controller (console-style rows, glyph hints); English or German (follows Windows) |
 
@@ -61,7 +62,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 
 Output: `out\BallanceHD_Setup.exe` (everything embedded) and `out\release\BallanceHD_Patch_<version>.zip`. The version lives in `src\common\Text.cs` (`Version.Text`), `src\plugin\win.c` and `src\plugin\BallanceHD.cpp`.
 
-Setup switches: `/install /silent /dir="<game folder>"`, `/uninstall /silent`. Launcher: `/snapshot=<folder>`, `/play`, `/lang=en|de`. Plugin: `BallanceHD\Settings.ini` → `[Debug] Trace=1` logs frame times, ball position and game state to `BallanceHD\plugin.log`; `BALLANCEHD_FAKEPAD=<file>` replaces the controllers for tests (`tools\test\FakePad.cs`).
+Setup switches: `/install /silent /dir="<game folder>"` (`/nobonus` skips the bonus level), `/uninstall /silent`. Launcher: `/snapshot=<folder>`, `/play`, `/lang=en|de`. Plugin: `BallanceHD\Settings.ini` → `[Debug] Trace=1` logs frame times, ball position and game state to `BallanceHD\plugin.log`; `BALLANCEHD_FAKEPAD=<file>` replaces the controllers for tests (`tools\test\FakePad.cs`).
 
 ## Layout
 
@@ -84,6 +85,7 @@ Game files are not part of the repository.
 - **Widescreen**: in `OnPreRender` the attached camera gets the screen aspect and `fov' = 2·atan(tan(fov/2)·screen/4:3)`, then `ForceCameraSettingsUpdate` + `PrepareCameras`; `OnPostRender` restores the camera, so the game's scripts never see a change.
 - **Rolling**: the game rolls the ball with four `SetPhysicsForce` blocks in the script "Ball Navigation". The plugin keeps its own instance of that building block (layout mirrored from the game's block, the prototype alone has none) plus its own `Physics WakeUp` – the physics engine lets a slow ball sleep and ignores forces on it. Forces are only set while the game's ball navigation is active (not while the ball spawns).
 - **Camera**: the right stick rotates `Cam_OrientRef` and `Cam_Orient` together (the game's 90° turns keep working), `Cam_Pos` is placed on a fixed distance and elevation, `InGameCam` exactly on it – no trailing, no spring-back.
+- **Bonus level 13**: Ballance is data driven – `AllLevel` lists file, start ball, sky, bonus and music per level, `CurrentLevel` holds the number. The plugin adds row 13 (values of the 2004 add-on: `Level_13.nmo`, `Ball_Stone`, `Sky_F`, 1300, music 5), unlock and high score entries, and starts the level like the menu does: `CurrentLevel = 13`, messages "Load Level" / "Menu_Load", the "Exit" block of `Menu_Start`.
 - **Menus**: the controller is turned into the game's keys (`SendInput` scan codes); 90° turns are Shift + arrow taps.
 
 ## Credits

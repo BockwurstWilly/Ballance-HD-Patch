@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -12,6 +12,7 @@ namespace BallanceHD
         readonly Label checkText = Theme.Label("");
         readonly CheckBox chkDesktop = Theme.Check(T.Get("su_desktop"));
         readonly CheckBox chkStart = Theme.Check(T.Get("su_startmenu"));
+        readonly CheckBox chkBonus = Theme.Check(T.Get("su_bonus"));
         readonly TextBox logBox = new TextBox();
         readonly RetroButton btnInstall = Theme.Button(T.Get("su_install"), true);
         readonly RetroButton btnUninstall = Theme.Button(T.Get("su_uninstall"));
@@ -64,12 +65,17 @@ namespace BallanceHD
             chkDesktop.Location = new Point(20, y);
             chkStart.Checked = true;
             chkStart.Location = new Point(20, y + 26);
-            Controls.AddRange(new Control[] { chkDesktop, chkStart });
+            chkBonus.Checked = true;
+            chkBonus.Location = new Point(20, y + 52);
+            var bonusNote = Theme.Label(T.Get("su_bonus_note"), Theme.Small, Theme.TextDim);
+            bonusNote.MaximumSize = new Size(690, 0);
+            bonusNote.Location = new Point(44, y + 76);
+            Controls.AddRange(new Control[] { chkDesktop, chkStart, chkBonus, bonusNote });
             btnUninstall.Bounds = new Rectangle(620, y, 120, 28);
             btnUninstall.Click += (o, e) => RunUninstall();
             Controls.Add(btnUninstall);
 
-            y += 64;
+            y += 118;
             var note = Theme.Label(T.Get("su_note"), Theme.Small, Theme.TextDim);
             note.MaximumSize = new Size(720, 0);
             note.Location = new Point(20, y);
@@ -155,6 +161,7 @@ namespace BallanceHD
             {
                 DesktopShortcut = chkDesktop.Checked,
                 StartMenuShortcut = chkStart.Checked,
+                BonusLevel = chkBonus.Checked,
             };
         }
 

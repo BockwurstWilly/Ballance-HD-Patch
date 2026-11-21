@@ -14,3 +14,6 @@ tools/test/*.bin
 
 # build tools fetched locally (compiler, Virtools SDK - not redistributed)
 Werkzeuge/
+
+# drafts for community posts (posted by hand, not part of the repository)
+docs/community/

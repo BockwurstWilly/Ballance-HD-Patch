@@ -153,6 +153,8 @@ public:
         context->RegisterNewManager(this);
         s.Load();
         draw::Init(context);
+        l13File = hd_file_exists("3D Entities\\Level\\Level_13.NMO") != 0;
+        hd_logi("bonus level 13 file present", l13File, 0);
         hd_logi("settings: frame limit / analog roll", s.frameLimit, s.analogRoll);
     }
 
@@ -176,12 +178,13 @@ private:
 
     // ---- objects, looked up by name once (a name lookup walks through all objects) ----
     struct Cached { const char *name; CK_CLASSID cid; CK_ID id; int retry; };
-    enum { O_OREF, O_ORIENT, O_POS, O_TARGET, O_CAM, O_MENU, O_KEYSTITLE, O_LEVEL, O_INGAME, O_LOADBAR, O_COUNT };
+    enum { O_OREF, O_ORIENT, O_POS, O_TARGET, O_CAM, O_MENU, O_KEYSTITLE, O_LEVEL, O_INGAME, O_LOADBAR, O_STARTBTN, O_MENUSTART, O_COUNT };
     Cached objs[O_COUNT] = {
         { "Cam_OrientRef", CKCID_3DENTITY, 0, 0 }, { "Cam_Orient", CKCID_3DENTITY, 0, 0 }, { "Cam_Pos", CKCID_3DENTITY, 0, 0 },
         { "Cam_Target", CKCID_3DENTITY, 0, 0 }, { "InGameCam", CKCID_TARGETCAMERA, 0, 0 },
         { "M_BlackScreen", CKCID_2DENTITY, 0, 0 }, { "M_Opt_Keys_Title", CKCID_2DENTITY, 0, 0 }, { "CurrentLevel", CKCID_DATAARRAY, 0, 0 },
-        { "Gameplay_Ingame", CKCID_BEHAVIOR, 0, 0 }, { "Ladebalken", CKCID_2DENTITY, 0, 0 } };
+        { "Gameplay_Ingame", CKCID_BEHAVIOR, 0, 0 }, { "Ladebalken", CKCID_2DENTITY, 0, 0 },
+        { "M_Start_But_01", CKCID_2DENTITY, 0, 0 }, { "Menu_Start", CKCID_BEHAVIOR, 0, 0 } };
 
     CKObject *Obj(int i)
     {
@@ -210,6 +213,13 @@ private:
     bool inLevel = false, menu = false, paused = false, onControls = false, playing = false;
     CK_ID attachedCam = 0;
     bool levelStart = false, tutorial = false, levelKnown = true, navActive = false;
+
+    // ---- bonus level 13 ("SuDu", official add-on 2004): offered on the level selection screen ----
+    bool levelSelect = false, l13File = false;
+    float l13x0 = 0, l13y0 = 0, l13x1 = 0, l13y1 = 0;
+    void PrepareLevel13();
+    bool StartLevel13();
+    void DrawLevel13(float w, float h);
 
     // ---- controller ----
     hd_pad pad = {}, lastPad = {};
@@ -319,6 +329,8 @@ CKERROR BallanceHD::PreProcess()
     playing = inLevel && !menu;
     CK2dEntity *keysTitle = (CK2dEntity *)Obj(O_KEYSTITLE);
     onControls = menu && keysTitle && keysTitle->IsVisible();
+    CK2dEntity *startBtn = (CK2dEntity *)Obj(O_STARTBTN);
+    levelSelect = menu && !inLevel && startBtn && startBtn->IsVisible();
     if (!onControls)
         panelFocus = false;
 
@@ -380,6 +392,15 @@ CKERROR BallanceHD::PreProcess()
         Keys();
     else
         hd_release_keys();
+    // bonus level 13: X / Square on the level selection screen, or a click on its panel
+    int mx = 0, my = 0;
+    bool click = hd_mouse_click(&mx, &my) != 0;
+    if (levelSelect && l13File)
+    {
+        bool hit = click && mx >= l13x0 && mx <= l13x1 && my >= l13y0 && my <= l13y1;
+        if (hit || Pressed(HD_X))
+            StartLevel13();
+    }
     if (playing && frame % 15 == 0 && s.trace)
     {
         CK3dEntity *t = E3(O_TARGET), *o = E3(O_OREF);
@@ -823,6 +844,52 @@ void BallanceHD::DebugTrace()
     if (navB) nav = navB->IsActive() ? 1 : 0;
     if (nav != lastNav) { hd_logi("ball navigation active", nav, frame); lastNav = nav; }
     if (rawDt > 0.05f) hd_logi("long frame ms / frame", (int)(rawDt * 1000), frame);
+    // one-time dump of all data arrays (names, columns, first rows) in the main menu
+    static bool dumped = false;
+    if (!dumped && menu && frame > 400)
+    {
+        dumped = true;
+        int count = m_Context->GetObjectsCountByClassID(CKCID_DATAARRAY);
+        CK_ID *list = m_Context->GetObjectsListByClassID(CKCID_DATAARRAY);
+        for (int i = 0; i < count && list; i++)
+        {
+            CKDataArray *arr = (CKDataArray *)m_Context->GetObject(list[i]);
+            if (!arr)
+                continue;
+            hd_logi(arr->GetName() ? arr->GetName() : "(array)", arr->GetRowCount(), arr->GetColumnCount());
+            char line[600];
+            int n = 0;
+            for (int c = 0; c < arr->GetColumnCount() && n < 560; c++)
+            {
+                const char *cn = arr->GetColumnName(c);
+                line[n++] = '[';
+                for (const char *p = cn ? cn : "?"; *p && n < 560; p++) line[n++] = *p;
+                line[n++] = ':';
+                line[n++] = (char)('0' + (int)arr->GetColumnType(c));
+                line[n++] = ']';
+                line[n++] = ' ';
+            }
+            line[n] = 0;
+            hd_log(line);
+            for (int r = 0; r < arr->GetRowCount() && r < 14; r++)
+            {
+                n = 0;
+                line[n++] = ' '; line[n++] = ' ';
+                for (int c = 0; c < arr->GetColumnCount() && n < 520; c++)
+                {
+                    char v[256];
+                    v[0] = 0;
+                    int len = arr->GetElementStringValue(r, c, NULL);
+                    if (len > 0 && len < 250)
+                        arr->GetElementStringValue(r, c, v);
+                    for (const char *p = v; *p && n < 580; p++) line[n++] = *p;
+                    if (n < 590) { line[n++] = ' '; line[n++] = '|'; line[n++] = ' '; }
+                }
+                line[n] = 0;
+                hd_log(line);
+            }
+        }
+    }
 }
 
 // ---- widescreen --------------------------------------------------------------------------------
@@ -971,10 +1038,13 @@ CKERROR BallanceHD::OnPostSpriteRender(CKRenderContext *dev)
     legendTime += dt;
 
     bool showPrompts = s.prompts && pad.kind != HD_PAD_NONE;
-    bool any = s.showFps || (showPrompts && ((menu && menuTime < 12) || (playing && legendTime < 12) || onControls));
+    bool bonus = levelSelect && l13File;
+    bool any = bonus || s.showFps || (showPrompts && ((menu && menuTime < 12) || (playing && legendTime < 12) || onControls));
     if (!any)
         return CK_OK;
     draw::Begin(dev);
+    if (bonus)
+        DrawLevel13(w, h);
     if (showPrompts)
     {
         if (onControls)
@@ -1171,6 +1241,153 @@ void BallanceHD::DrawPanel(float w, float h)
     draw::Text(hx, hy + (gsz - fs * 1.2f) * 0.5f, fs, dim, footer);
 }
 
+// ---- bonus level 13 -------------------------------------------------------------------------------
+// The official add-on level "SuDu" (2004) came with replaced menu and gameplay files for the 2004 release.
+// The game is data driven: AllLevel lists each level's file, start ball, sky, bonus and music, CurrentLevel
+// holds the number, and the menu starts a level with the messages "Load Level" / "Menu_Load" plus the
+// "Exit" block of Menu_Start. So the plugin only adds row 13 (values of the 2004 release) and starts it the
+// same way - the game's own files stay as they are; only Level_13.NMO is added.
+
+static CKBehavior *FindBlock(CKBehavior *b, const char *name)
+{
+    if (!b)
+        return NULL;
+    for (int i = 0; i < b->GetSubBehaviorCount(); i++)
+    {
+        CKBehavior *s = b->GetSubBehavior(i);
+        if (s && Same(s->GetName(), name))
+            return s;
+        CKBehavior *deep = FindBlock(s, name);
+        if (deep)
+            return deep;
+    }
+    return NULL;
+}
+
+static CKDataArray *Array(CKContext *ctx, const char *name)
+{
+    return (CKDataArray *)ctx->GetObjectByNameAndClass((CKSTRING)name, CKCID_DATAARRAY, NULL);
+}
+
+void BallanceHD::PrepareLevel13()
+{
+    CKDataArray *all = Array(m_Context, "AllLevel");
+    if (all && all->GetRowCount() == 12 && all->GetColumnCount() >= 8)
+    {
+        all->AddRow();
+        const char *row[8] = { "Level_13.nmo", "Ball_Stone", "0", "Sky_F", "255,255,255,255", "0.01,0.01", "1300", "5" };
+        for (int c = 0; c < 8; c++)
+            all->SetElementStringValue(12, c, (char *)row[c]);
+        hd_log("bonus level 13: AllLevel row added");
+    }
+    CKDataArray *unlock = Array(m_Context, "DB_Levelfreischaltung");
+    if (unlock && unlock->GetRowCount() == 12)
+    {
+        unlock->AddRow();
+        int one = 1;
+        unlock->SetElementValue(12, 0, &one, sizeof(one));
+    }
+    // high score list: the end-of-level screen looks it up in Menu_HighscoreArrays by level number
+    CKDataArray *hs = Array(m_Context, "DB_Highscore_Lv13");
+    if (!hs)
+    {
+        hs = (CKDataArray *)m_Context->CreateObject(CKCID_DATAARRAY, (CKSTRING) "DB_Highscore_Lv13");
+        if (hs)
+        {
+            hs->InsertColumn(-1, CKARRAYTYPE_STRING, (char *)"Playername");
+            hs->InsertColumn(-1, CKARRAYTYPE_INT, (char *)"Points");
+            for (int r = 0; r < 10; r++)
+            {
+                hs->AddRow();
+                hs->SetElementStringValue(r, 0, (char *)"Mr. Default");
+                int points = 4000 - 400 * r;
+                hs->SetElementValue(r, 1, &points, sizeof(points));
+            }
+            CKLevel *level = m_Context->GetCurrentLevel();
+            if (level)
+                level->AddObject(hs);
+            hd_log("bonus level 13: high score list created");
+        }
+    }
+    CKDataArray *lists = Array(m_Context, "Menu_HighscoreArrays");
+    if (lists && hs && lists->GetRowCount() == 12)
+    {
+        lists->AddRow();
+        CK_ID id = hs->GetID();
+        lists->SetElementValue(12, 0, &id, sizeof(id));
+    }
+}
+
+bool BallanceHD::StartLevel13()
+{
+    CKBehavior *menuStart = (CKBehavior *)Obj(O_MENUSTART);
+    CKBehavior *exit = FindBlock(menuStart, "Exit");
+    CKDataArray *current = (CKDataArray *)Obj(O_LEVEL);
+    CKMessageManager *mm = m_Context->GetMessageManager();
+    if (!exit || !current || !mm)
+    {
+        hd_log("bonus level 13: menu blocks not found");
+        return false;
+    }
+    PrepareLevel13();
+    int level = 13;
+    current->SetElementValue(0, 0, &level, sizeof(level));
+    // the level loader reads its AllLevel row from the first input of "Load LevelXX" (Levelinit_build)
+    CKBehavior *build = (CKBehavior *)m_Context->GetObjectByNameAndClass((CKSTRING) "Levelinit_build", CKCID_BEHAVIOR, NULL);
+    CKBehavior *loadXX = FindBlock(build, "Load LevelXX");
+    CKParameter *rowParam = loadXX && loadXX->GetInputParameterCount() > 0 ? loadXX->GetInputParameter(0)->GetRealSource() : NULL;
+    if (rowParam)
+    {
+        int row = 12;
+        rowParam->SetValue(&row, sizeof(row));
+        hd_logi("bonus level 13: loader row set (param type d1)", (int)rowParam->GetGUID().d1, 0);
+    }
+    else
+        hd_log("bonus level 13: loader row parameter not found");    CKMessageType loadLevel = mm->AddMessageType((CKSTRING) "Load Level");
+    CKMessageType loadMenu = mm->AddMessageType((CKSTRING) "Menu_Load");
+    mm->SendMessageSingle(loadLevel, (CKBeObject *)m_Context->GetCurrentLevel());
+    CKObject *sound = m_Context->GetObjectByNameAndClass((CKSTRING) "All_Sound", CKCID_GROUP, NULL);
+    if (sound)
+        mm->SendMessageSingle(loadMenu, (CKBeObject *)sound);
+    CK2dEntity *black = (CK2dEntity *)Obj(O_MENU);
+    if (black)
+        black->Show(CKHIDE);
+    exit->ActivateInput(0);
+    exit->Activate();
+    hd_release_keys();
+    levelSelect = false;
+    hd_log("bonus level 13: started");
+    return true;
+}
+
+void BallanceHD::DrawLevel13(float w, float h)
+{
+    // right of the game's level column, vertically centred
+    float menuRight = w * 0.5f + h * 0.362f;
+    float pw = Minf(h * 0.36f, w - menuRight - h * 0.06f), ph = h * 0.19f;
+    if (pw < h * 0.24f)
+        pw = h * 0.24f;
+    float x0 = w - h * 0.03f - pw, y0 = h * 0.40f;
+    l13x0 = x0; l13y0 = y0; l13x1 = x0 + pw; l13y1 = y0 + ph;
+    unsigned int warm = draw::Argb(0.97f, 0.68f, 0.38f, 1), white = draw::Argb(0.96f, 0.93f, 0.88f, 1);
+    unsigned int dim = draw::Argb(0.75f, 0.72f, 0.68f, 1);
+    draw::Rect(x0, y0, x0 + pw, y0 + ph, draw::Argb(0.05f, 0.06f, 0.10f, 0.72f));
+    draw::Rect(x0, y0, x0 + h * 0.005f, y0 + ph, warm);
+    float pd = h * 0.022f, fs = h * 0.024f;
+    draw::Text(x0 + pd, y0 + pd * 0.7f, fs * 0.85f, warm, "BONUS");
+    draw::Text(x0 + pd, y0 + pd * 0.7f + fs * 1.3f, fs * 1.6f, white, "Level 13 · SuDu");
+    float gy = y0 + ph - pd - fs * 1.5f;
+    float gx = x0 + pd;
+    if (pad.kind != HD_PAD_NONE)
+    {
+        CKTexture *g = Glyph("x");
+        draw::Image(g, gx, gy, gx + fs * 1.5f, gy + fs * 1.5f, draw::Argb(1, 1, 1, 1));
+        gx += fs * 1.5f + pd * 0.5f;
+        draw::Text(gx, gy + fs * 0.15f, fs, dim, s.T("Starten", "Start"));
+    }
+    else
+        draw::Text(gx, gy + fs * 0.15f, fs, dim, s.T("Klicken zum Starten", "Click to start"));
+}
 // ---- plugin entry points -------------------------------------------------------------------------
 static CKERROR InitInstance(CKContext *context)
 {
@@ -1203,7 +1420,7 @@ PLUGIN_EXPORT CKPluginInfo *CKGetPluginInfo(int index)
         g_info->m_Description = "Ballance HD";
         g_info->m_Author = "CompiWare / BockwurstWilly";
         g_info->m_Summary = "Widescreen, controller and HD features for Ballance";
-        g_info->m_Version = 0x020100;
+        g_info->m_Version = 0x020200;
         g_info->m_InitInstanceFct = InitInstance;
         g_info->m_ExitInstanceFct = ExitInstance;
         g_info->m_Type = CKPLUGIN_MANAGER_DLL;
