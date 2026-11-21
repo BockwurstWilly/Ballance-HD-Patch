@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -13,8 +13,6 @@ namespace BallanceHD
     {
         public bool Ok;
         public string Release = "";             // text for the UI
-        public bool KnownRenderEngine;
-        public bool VcRuntime;
         public readonly List<string> Problems = new List<string>();
     }
 
@@ -28,13 +26,15 @@ namespace BallanceHD
         public const string BackupDir = @"_HDPatch\backup";
         public const string SettingsIni = @"_HDPatch\BallanceHD.ini";
         public const string RenderIniPath = @"RenderEngines\CK2_3D.ini";
-        public const string BmlCfgPath = @"ModLoader\Configs\BML.cfg";
-        public const string ModFile = @"ModLoader\Mods\BallanceHD.mod.as";
+        public const string PluginDll = @"Managers\BallanceHD.dll";
+        // shared with the game plugin: it reads [General] / [Controller] / [Buttons] and saves what is changed in the game
+        public const string PluginDir = "BallanceHD";
+        public const string PluginIni = @"BallanceHD\Settings.ini";
+        // versions up to 1.3.2 (BML+ mod): only read to take over the settings when updating
+        public const string OldBmlCfg = @"ModLoader\Configs\BML.cfg";
+        public const string OldPadCfg = @"ModLoader\Configs\compiware.ballancehd.cfg";
         public const string GogId = "1918420377";
         public const string SteamId = "2000770";
-
-        // CK2_3D.dll of the GOG/Steam release: BML+'s widescreen projection hook is made for exactly this build
-        const string KnownCk2Md5 = "BE7692ACAB0C16C8FFC5FDC1D3ABBB15";
 
         static readonly string[] Required = { "base.cmo", "Database.tdb", @"Bin\Player.exe", @"Bin\CK2.dll", @"Bin\VxMath.dll", @"RenderEngines\CK2_3D.dll", @"RenderEngines\CK2_3D.ini" };
 
@@ -61,32 +61,7 @@ namespace BallanceHD
                 c.Release = T.Get("chk_steam");
             else
                 c.Release = T.Get("chk_other");
-            c.KnownRenderEngine = Md5(Path.Combine(dir, @"RenderEngines\CK2_3D.dll")) == KnownCk2Md5;
-            c.VcRuntime = HasVcRuntime();
             return c;
-        }
-
-        static string Md5(string path)
-        {
-            try
-            {
-                using (var md5 = MD5.Create())
-                using (var s = File.OpenRead(path))
-                    return BitConverter.ToString(md5.ComputeHash(s)).Replace("-", "");
-            }
-            catch (Exception)
-            {
-                return "";
-            }
-        }
-
-        /// <summary>BML+ needs the x86 Visual C++ 2015-2022 runtime.</summary>
-        public static bool HasVcRuntime()
-        {
-            var sys = Environment.Is64BitOperatingSystem
-                ? Environment.GetFolderPath(Environment.SpecialFolder.SystemX86)
-                : Environment.GetFolderPath(Environment.SpecialFolder.System);
-            return File.Exists(Path.Combine(sys, "vcruntime140.dll")) && File.Exists(Path.Combine(sys, "msvcp140.dll"));
         }
 
         public static bool IsGameDir(string dir)
@@ -253,8 +228,6 @@ namespace BallanceHD
         public int GameLanguage = 1;         // 0 de, 1 en, 2 es, 3 it, 4 fr
         public bool SkipIntro = true;
         public bool ShowFps;
-        public bool ShowTitle;
-        public bool LifeBallFix = true;
 
         public static HdSettings Load(string dir)
         {
@@ -279,10 +252,11 @@ namespace BallanceHD
             var player = IniDoc.Load(Path.Combine(dir, Game.PlayerIni));
             s.GameLanguage = Math.Max(0, Math.Min(4, player.GetInt("Game", "Language", s.GameLanguage)));
             s.SkipIntro = player.GetBool("Game", "SkipOpening", s.SkipIntro);
-            var bml = BmlCfg.Load(Path.Combine(dir, Game.BmlCfgPath));
-            s.ShowFps = bml.GetBool("HUD", "ShowFPS", s.ShowFps);
-            s.ShowTitle = bml.GetBool("HUD", "ShowTitle", s.ShowTitle);
-            s.LifeBallFix = bml.GetBool("Tweak", "FixLifeBallFreeze", s.LifeBallFix);
+            var plugin = IniDoc.Load(Path.Combine(dir, Game.PluginIni));
+            if (plugin.Get("General", "ShowFps") != null)
+                s.ShowFps = plugin.GetBool("General", "ShowFps", s.ShowFps);
+            else
+                s.ShowFps = BmlCfg.Load(Path.Combine(dir, Game.OldBmlCfg)).GetBool("HUD", "ShowFPS", s.ShowFps);   // update from 1.x
             return s;
         }
 
@@ -303,7 +277,7 @@ namespace BallanceHD
         }
 
         /// <summary>
-        /// Automatic in a window / borderless: VSync (BML+ "SetMaxFrameRate 0"; measured: an even 16.67 ms at 60 Hz,
+        /// Automatic in a window / borderless: VSync (the plugin switches the engine's frame rate mode; measured: an even 16.67 ms at 60 Hz,
         /// while its 60 fps limiter gives 17.3 ms frames = 57.5 fps = a repeated frame every 0.4 s, micro-stutter).
         /// The game runs at the same speed at any frame rate (measured 30 / 60 / 97 fps), so VSync at 48 or 144 Hz
         /// is fine. Exclusive fullscreen has no working VSync under Direct3D 8: there the limiter at the refresh rate.
@@ -333,7 +307,7 @@ namespace BallanceHD
             ini.Save();
         }
 
-        /// <summary>Writes everything into the game's files: Player.ini, BML.cfg, CK2_3D.ini, the widescreen mod.</summary>
+        /// <summary>Writes everything into the game's files: Player.ini, CK2_3D.ini and the plugin's Settings.ini.</summary>
         public void Apply(string dir)
         {
             var all = Displays.All();
@@ -374,15 +348,17 @@ namespace BallanceHD
             player.Set("Game", "Rookie", 0);
             player.Save();
 
-            var bml = BmlCfg.Load(Path.Combine(dir, Game.BmlCfgPath));
             int fps = EffectiveFps(d);
-            bml.SetBool("Graphics", "WidescreenFix", Widescreen);
-            bml.SetBool("Graphics", "UnlockFrameRate", !UsesVSync && fps == 0);
-            bml.SetInt("Graphics", "SetMaxFrameRate", UsesVSync ? 0 : fps == 0 ? 240 : fps);
-            bml.SetBool("HUD", "ShowTitle", ShowTitle);
-            bml.SetBool("HUD", "ShowFPS", ShowFps);
-            bml.SetBool("Tweak", "FixLifeBallFreeze", LifeBallFix);
-            bml.Save();
+            Directory.CreateDirectory(Path.Combine(dir, Game.PluginDir));
+            var plugin = IniDoc.Load(Path.Combine(dir, Game.PluginIni));
+            plugin.Set("General", "Language", GameLanguage == 0 ? "de" : "en");
+            plugin.Set("General", "Widescreen", Widescreen);
+            plugin.Set("General", "Prompts", Prompts);
+            plugin.Set("General", "ShowFps", ShowFps);
+            plugin.Set("General", "FrameLimit", UsesVSync ? 0 : fps == 0 ? -1 : fps);   // 0 VSync, -1 free, n limit
+            plugin.Set("Controller", "Enabled", Pad);
+            plugin.Set("Controller", "DeadZone", Deadzone);
+            plugin.Save();
 
             RenderIni.Set(Path.Combine(dir, Game.RenderIniPath), new Dictionary<string, string>
             {
@@ -390,57 +366,6 @@ namespace BallanceHD
                 { "TextureVideoFormat", "_32_ARGB8888" },
                 { "SpriteVideoFormat", "_32_ARGB8888" },
             });
-
-            // the mod is always on; what it does is switched by marker files it checks (see BallanceHD.mod.as)
-            var on = Path.Combine(dir, Game.ModFile);
-            var off = on + ".off";
-            if (File.Exists(off))
-            {
-                if (File.Exists(on))
-                    File.Delete(off);
-                else
-                    File.Move(off, on);       // 1.0.0 switched the widescreen fix by renaming the mod
-            }
-            PadMarker.SetFlag(dir, "wide_off", !Widescreen);
-            PadMarker.SetFlag(dir, "hints_off", !Prompts || !Pad);
-            PadMarker.SetFlag(dir, "lang_de", GameLanguage == 0);
-        }
-    }
-
-    /// <summary>
-    /// Small marker files in ModLoader\BallanceHD that the game mod polls (it can only test whether a file exists):
-    /// which controller is connected (pad_xbox / pad_ps, kept up to date by the launcher while the game runs),
-    /// the language of the prompts and what is switched off.
-    /// </summary>
-    static class PadMarker
-    {
-        public const string Dir = @"ModLoader\BallanceHD";
-
-        public static void SetFlag(string dir, string name, bool on)
-        {
-            try
-            {
-                var p = Path.Combine(dir, Dir, name);
-                if (on && !File.Exists(p))
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(p));
-                    File.WriteAllText(p, "");
-                }
-                else if (!on && File.Exists(p))
-                {
-                    File.Delete(p);
-                }
-            }
-            catch (Exception)
-            {
-                // a marker that cannot be written only costs the prompts
-            }
-        }
-
-        public static void SetPad(string dir, PadKind kind)
-        {
-            SetFlag(dir, "pad_xbox", kind == PadKind.Xbox);
-            SetFlag(dir, "pad_ps", kind == PadKind.PlayStation);
         }
     }
 

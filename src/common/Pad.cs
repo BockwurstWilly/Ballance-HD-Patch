@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -26,67 +26,6 @@ namespace BallanceHD
         }
     }
 
-    /// <summary>
-    /// Shared memory between the launcher and the game mod ("Local\BallanceHD_Pad", 128 bytes) - no file access,
-    /// so nothing for the virus scanner to look at 60 times a second.
-    ///   launcher:  0 seq, 4 lx, 8 ly, 12 rx, 16 ry (floats -1..1, y up), 20 buttons (+ trigger bits), 24 kind (1 Xbox, 2 PS), 28 seq
-    ///   mod:      64 modSeq (counts frames), 68 state (1 in level, 2 paused, 4 settings panel has the controller,
-    ///             8 free camera on, 16 stepless rolling on), 72.. button masks of the 9 actions (PadConfig.Actions order)
-    /// </summary>
-    sealed class SharedPad : IDisposable
-    {
-        public const string Name = @"Local\BallanceHD_Pad";
-        public const int StateInLevel = 1, StatePaused = 2, StatePanel = 4, StateFreeCam = 8, StateAnalog = 16;
-        readonly System.IO.MemoryMappedFiles.MemoryMappedFile map;
-        readonly System.IO.MemoryMappedFiles.MemoryMappedViewAccessor view;
-        int seq;
-        int lastModSeq = -1, modQuiet = 999;
-
-        public SharedPad()
-        {
-            map = System.IO.MemoryMappedFiles.MemoryMappedFile.CreateOrOpen(Name, 128);
-            view = map.CreateViewAccessor(0, 128);
-        }
-
-        static float Axis(short v) { return Math.Max(-1f, v / 32767f); }
-
-        public void Write(PadState s, PadKind kind)
-        {
-            seq++;
-            view.Write(0, seq);
-            view.Write(4, Axis(s.LX));
-            view.Write(8, Axis(s.LY));
-            view.Write(12, Axis(s.RX));
-            view.Write(16, Axis(s.RY));
-            view.Write(20, s.Buttons | (s.LeftTrigger > 100 ? Pads.LTrigger : 0) | (s.RightTrigger > 100 ? Pads.RTrigger : 0));
-            view.Write(24, kind == PadKind.Xbox ? 1 : kind == PadKind.PlayStation ? 2 : 0);
-            view.Write(28, seq);
-            int ms = view.ReadInt32(64);
-            modQuiet = ms != lastModSeq ? 0 : modQuiet + 1;
-            lastModSeq = ms;
-        }
-
-        /// <summary>The mod counts its frames: alive while that number moves (polled every 8 ms).</summary>
-        public bool ModAlive { get { return modQuiet < 40; } }
-        public int ModState { get { return ModAlive ? view.ReadInt32(68) : 0; } }
-        public bool Has(int state) { return (ModState & state) != 0; }
-
-        /// <summary>The button mask the mod uses for an action (its settings may have changed in the game).</summary>
-        public int Mask(int action) { return view.ReadInt32(72 + 4 * action); }
-
-        public void Dispose()
-        {
-            try
-            {
-                Write(new PadState(), PadKind.None);
-                view.Dispose();
-                map.Dispose();
-            }
-            catch (Exception)
-            {
-            }
-        }
-    }
     enum PadKind { None, Xbox, PlayStation }
 
     /// <summary>

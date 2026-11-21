@@ -72,9 +72,19 @@ namespace BallanceHD
             state.Set("Install", "Version", Version.Text);
             state.Save();
 
-            // 0. the Visual C++ runtime BML+ needs (shipped with the setup, installed only when missing)
-            if (!Game.HasVcRuntime())
-                InstallVcRuntime();
+            // 0. settings first: an update from 1.x takes them over from the BML+ files removed below
+            var settings = HdSettings.Load(dir);
+            var padCfg = PadConfig.Load(dir);
+
+            // the payload's file list (paths relative to the game folder)
+            var payload = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip"))
+            using (var zip = new ZipArchive(s, ZipArchiveMode.Read))
+                foreach (var e in zip.Entries)
+                    if (!e.FullName.EndsWith("/") && !e.FullName.StartsWith("doc/", StringComparison.OrdinalIgnoreCase))
+                        payload.Add(e.FullName.Replace('/', '\\'));
+            if (update)
+                RemoveObsolete(dir, backup, files, payload, state);
 
             // 1. originals: back up what is changed, move away what breaks the picture
             //    (only on the first install: on an update these files are already the patch's own)
@@ -102,18 +112,9 @@ namespace BallanceHD
                     if (e.FullName.EndsWith("/"))
                         continue;
                     var rel = e.FullName.Replace('/', '\\');
-                    if (rel.StartsWith(@"redist\", StringComparison.OrdinalIgnoreCase))
-                        continue;   // runtimes: see InstallVcRuntime
                     bool doc = rel.StartsWith(@"doc\", StringComparison.OrdinalIgnoreCase);
                     var relTarget = doc ? Path.Combine(Game.PatchDir, rel) : rel;
                     var target = Path.Combine(dir, relTarget);
-                    // 1.0.0 switched the widescreen fix off by renaming the mod to *.off; since 1.1.0 the mod is
-                    // always on (the launcher switches its parts with marker files): the renamed copy is the patch's own
-                    if (string.Equals(rel, Game.ModFile, StringComparison.OrdinalIgnoreCase) && File.Exists(target + ".off"))
-                    {
-                        File.Delete(target + ".off");
-                        files.Remove(relTarget + ".off");
-                    }
                     if (!doc && !files.Contains(relTarget) && File.Exists(target))
                         BackUp(dir, backup, relTarget);
                     using (var es = e.Open())
@@ -132,11 +133,11 @@ namespace BallanceHD
 
             // 3. settings: a fresh install starts with the HD defaults (native resolution of the main display),
             //    an update keeps the player's choices
-            var settings = HdSettings.Load(dir);
             if (!update)
                 settings.GameLanguage = OriginalLanguage(settings.GameLanguage);
             settings.Save(dir);
             settings.Apply(dir);
+            padCfg.Save(dir);
             var d = Displays.Pick(Displays.All(), settings.Display);
             var res = settings.Resolution(d);
             log(T.Get("log_settings", res.W, res.H, settings.EffectiveFps(d)));
@@ -161,56 +162,34 @@ namespace BallanceHD
         }
 
         /// <summary>
-        /// Runs the embedded Microsoft installer quietly. It needs admin rights: elevated setups run it directly,
-        /// otherwise Windows asks once (UAC). Exit codes 3010 (restart pending) and 1638 (newer version present) are fine.
+        /// Update: files of an older version that the new one no longer has (1.x: BML+, AngelScript, the mod, its
+        /// fonts and glyphs, the bundled Visual C++ installer) go; where one of them had replaced an original, the
+        /// original comes back from the backup. The mod loader folder goes if the patch created it.
         /// </summary>
-        void InstallVcRuntime()
+        void RemoveObsolete(string dir, string backup, HashSet<string> files, HashSet<string> payload, IniDoc state)
         {
-            log(T.Get("log_vcrt"));
-            var tmp = Path.Combine(Path.GetTempPath(), "BallanceHD_vc_redist.x86.exe");
-            using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.zip"))
-            using (var zip = new ZipArchive(s, ZipArchiveMode.Read))
+            foreach (var rel in files.Where(f => !payload.Contains(f)).ToList())
             {
-                var e = zip.GetEntry("redist/vc_redist.x86.exe");
-                if (e == null)
-                    throw new InvalidOperationException(T.Get("chk_vcrt"));
-                using (var es = e.Open())
-                using (var fs = File.Create(tmp))
-                    es.CopyTo(fs);
+                Delete(Path.Combine(dir, rel));
+                files.Remove(rel);
+                var original = Path.Combine(backup, rel);
+                if (File.Exists(original))
+                {
+                    CopyRetrying(original, Path.Combine(dir, rel));
+                    File.Delete(original);
+                    log(T.Get("log_restore", rel));
+                }
             }
-            try
+            var ml = Path.Combine(dir, "ModLoader");
+            if (!state.GetBool("Install", "HadModLoader", false) && Directory.Exists(ml))
             {
-                var psi = new System.Diagnostics.ProcessStartInfo(tmp, "/install /quiet /norestart");
-                if (IsElevated())
-                {
-                    psi.UseShellExecute = false;
-                }
-                else
-                {
-                    psi.UseShellExecute = true;
-                    psi.Verb = "runas";
-                }
-                int code;
-                try
-                {
-                    using (var p = System.Diagnostics.Process.Start(psi))
-                    {
-                        p.WaitForExit();
-                        code = p.ExitCode;
-                    }
-                }
-                catch (System.ComponentModel.Win32Exception)
-                {
-                    throw new InvalidOperationException(T.Get("err_vcrt_declined"));
-                }
-                if (code != 0 && code != 3010 && code != 1638 && !Game.HasVcRuntime())
-                    throw new InvalidOperationException(T.Get("err_vcrt", code));
-                log(T.Get("log_vcrt_done"));
+                Directory.Delete(ml, true);
+                log(T.Get("log_delete", "ModLoader\\"));
             }
-            finally
-            {
-                try { File.Delete(tmp); } catch (Exception) { }
-            }
+            var redist = Path.Combine(dir, Game.PatchDir, "redist");
+            if (Directory.Exists(redist))
+                Directory.Delete(redist, true);
+            WriteList(dir, files);
         }
 
         /// <summary>The language the original game was set to (GOG writes it to the registry), else Windows'.</summary>
@@ -336,6 +315,13 @@ namespace BallanceHD
                     CopyRetrying(b, target);
                     log(T.Get("log_restore", rel));
                 }
+            }
+            // 4b. the plugin's own folder (settings, log, glyphs, font)
+            var pluginDir = Path.Combine(dir, Game.PluginDir);
+            if (Directory.Exists(pluginDir))
+            {
+                Directory.Delete(pluginDir, true);
+                log(T.Get("log_delete", Game.PluginDir + "\\"));
             }
             // 5. empty folders the patch left behind
             foreach (var d in new[] { @"ModLoader\Mods", @"ModLoader\Fonts", @"ModLoader\Configs", "ModLoader" })

@@ -1,13 +1,12 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 
 namespace BallanceHD
 {
     static class Version
     {
-        public const string Text = "1.3.2";
+        public const string Text = "2.0.0";
         public const string BallancePlayer = "0.3.9";
-        public const string BmlPlus = "0.3.14";
     }
 
     /// <summary>UI texts, German or English: the Windows display language, or the choice under Info.</summary>
@@ -41,8 +40,6 @@ namespace BallanceHD
             { "chk_gog", new[] { "Ballance (GOG-Version) erkannt.", "Ballance (GOG release) detected." } },
             { "chk_steam", new[] { "Ballance (Steam-Version) erkannt.", "Ballance (Steam release) detected." } },
             { "chk_other", new[] { "Ballance erkannt (unbekannte Version – sollte funktionieren).", "Ballance detected (unknown release – should work)." } },
-            { "chk_ck2", new[] { "Hinweis: unbekannte Render-Engine (CK2_3D.dll) – das 16:9-Bild ohne Ränder funktioniert evtl. nicht.", "Note: unknown render engine (CK2_3D.dll) – the borderless 16:9 picture may not work." } },
-            { "chk_vcrt", new[] { "Microsoft Visual C++ 2015–2022 (x86) fehlt – wird für den Mod Loader benötigt.", "Microsoft Visual C++ 2015–2022 (x86) is missing – the mod loader needs it." } },
 
             // launcher frame
             { "nav_gfx", new[] { "Grafik", "Graphics" } },
@@ -123,9 +120,7 @@ namespace BallanceHD
             // game
             { "game_lang", new[] { "Spielsprache", "Game language" } },
             { "game_skip", new[] { "Atari-/Logo-Intro überspringen", "Skip the Atari / logo intro" } },
-            { "game_fps", new[] { "FPS-Anzeige oben links", "FPS counter top left" } },
-            { "game_title", new[] { "Mod-Loader-Versionszeile oben anzeigen", "Show the mod loader version line at the top" } },
-            { "game_lifeball", new[] { "Hänger beim Einsammeln von Extraleben beheben", "Fix the freeze when picking up extra lives" } },
+            { "game_fps", new[] { "FPS-Anzeige oben rechts", "FPS counter top right" } },
             { "game_ui_lang", new[] { "Sprache des Launchers", "Launcher language" } },
             { "lang_auto", new[] { "Automatisch (Windows)", "Automatic (Windows)" } },
             { "game_save_hint", new[] { "Spielstände und Highscores bleiben in Database.tdb und werden nicht verändert.", "Save games and high scores stay in Database.tdb and are not touched." } },
@@ -133,15 +128,15 @@ namespace BallanceHD
             // info
             { "info_text", new[] {
                 "Inoffizieller HD-Patch für Ballance (2004, Cyparade / Atari).\n\n" +
-                "• BallancePlayer {0} von doyaGu – neue Spiel-EXE: 32 Bit, hohe Auflösungen, Breitbild, randloses Vollbild (MIT-Lizenz)\n" +
-                "• Ballance Mod Loader Plus {1} von doyaGu & Gamepiaynmo – Breitbild-Sichtfeld, Bildratenbegrenzung, Fixes (MIT-Lizenz)\n" +
-                "• Ballance HD (dieses Paket) – Setup, Launcher, Controller, randloses 16:9-Bild\n" +
+                "• BallancePlayer {0} von doyaGu – neue Spiel-EXE: 32 Bit, hohe Auflösungen, randloses Vollbild (MIT-Lizenz)\n" +
+                "• Ballance HD (dieses Paket) – eigenes Spiel-Plugin: Breitbild-Sichtfeld, VSync, Controller mit stufenlosem Rollen und freier Kamera, Tastensymbole; Setup und Launcher\n" +
+                "• Schrift im Spiel: BML Sans (IBM Plex Sans) – SIL Open Font License\n" +
                 "• Tastensymbole: UI Elements von Arks (@ScissorMarks, arks.itch.io) – CC BY 4.0\n\n" +
                 "Deinstallieren stellt den Spielordner wieder her. Spielstände bleiben erhalten.",
                 "Unofficial HD patch for Ballance (2004, Cyparade / Atari).\n\n" +
-                "• BallancePlayer {0} by doyaGu – new game executable: 32-bit, high resolutions, widescreen, borderless fullscreen (MIT licence)\n" +
-                "• Ballance Mod Loader Plus {1} by doyaGu & Gamepiaynmo – widescreen field of view, frame limiter, fixes (MIT licence)\n" +
-                "• Ballance HD (this package) – setup, launcher, controller, borderless 16:9 picture\n" +
+                "• BallancePlayer {0} by doyaGu – new game executable: 32-bit, high resolutions, borderless fullscreen (MIT licence)\n" +
+                "• Ballance HD (this package) – its own game plugin: widescreen field of view, vsync, controller with stepless rolling and a free camera, button prompts; setup and launcher\n" +
+                "• In-game font: BML Sans (IBM Plex Sans) – SIL Open Font License\n" +
                 "• Button glyphs: UI Elements by Arks (@ScissorMarks, arks.itch.io) – CC BY 4.0\n\n" +
                 "Uninstalling restores the game folder. Save games are kept." } },
             { "info_folder", new[] { "Spielordner öffnen", "Open game folder" } },
@@ -160,7 +155,6 @@ namespace BallanceHD
             { "su_launch", new[] { "LAUNCHER STARTEN", "START LAUNCHER" } },
             { "su_bad", new[] { "Hier ist kein vollständiges Ballance:", "This is not a complete Ballance installation:" } },
             { "su_note", new[] { "Geänderte Originaldateien werden in „_HDPatch\\backup“ gesichert; „Entfernen“ stellt sie wieder her.", "Changed original files are backed up to \"_HDPatch\\backup\"; \"Remove\" restores them." } },
-            { "chk_vcrt_bundled", new[] { "Microsoft Visual C++ (x86) fehlt noch – das Setup installiert es mit (Windows fragt einmal nach Administratorrechten).", "Microsoft Visual C++ (x86) is missing – the setup installs it as well (Windows asks once for administrator rights)." } },
             { "su_success", new[] { "Der HD-Patch ist installiert.\n\nStarte Ballance ab jetzt über „Ballance - HD Launcher“.", "The HD patch is installed.\n\nFrom now on, start Ballance with \"Ballance - HD Launcher\"." } },
             { "su_uninstall_confirm", new[] { "HD-Patch entfernen und die Originaldateien wiederherstellen?\nSpielstände bleiben erhalten.", "Remove the HD patch and restore the original files?\nSave games are kept." } },
             { "su_removed", new[] { "Der HD-Patch wurde entfernt.", "The HD patch has been removed." } },
@@ -175,10 +169,6 @@ namespace BallanceHD
             { "log_settings", new[] { "Grafik eingestellt: {0} × {1}, {2} Hz mit VSync, randlos", "Graphics set: {0} × {1}, {2} Hz with vsync, borderless" } },
             { "log_shortcuts", new[] { "Verknüpfungen angelegt.", "Shortcuts created." } },
             { "log_done", new[] { "Fertig.", "Done." } },
-            { "log_vcrt", new[] { "Installiere Microsoft Visual C++ 2015–2022 (x86) …", "Installing Microsoft Visual C++ 2015–2022 (x86) …" } },
-            { "log_vcrt_done", new[] { "Visual C++ installiert.", "Visual C++ installed." } },
-            { "err_vcrt_declined", new[] { "Die Installation von Microsoft Visual C++ (x86) wurde abgebrochen. Sie wird für den Mod Loader benötigt – bitte erneut installieren und die Windows-Abfrage bestätigen.", "Installing Microsoft Visual C++ (x86) was cancelled. The mod loader needs it – please install again and confirm the Windows prompt." } },
-            { "err_vcrt", new[] { "Microsoft Visual C++ (x86) konnte nicht installiert werden (Fehler {0}).", "Microsoft Visual C++ (x86) could not be installed (error {0})." } },
             { "log_restore", new[] { "wiederhergestellt: {0}", "restored: {0}" } },
             { "log_delete", new[] { "entfernt: {0}", "removed: {0}" } },
             { "log_leftover", new[] { "Ordner {0} konnte nicht gelöscht werden: {1}", "Could not delete folder {0}: {1}" } },

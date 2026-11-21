@@ -135,17 +135,8 @@ namespace BallanceHD
             }
             else
             {
-                var lines = c.Release;
-                bool warn = false;
-                if (!c.KnownRenderEngine)
-                {
-                    lines += "\n" + T.Get("chk_ck2");
-                    warn = true;
-                }
-                if (!c.VcRuntime)
-                    lines += "\n" + T.Get("chk_vcrt_bundled");
-                checkText.ForeColor = warn ? Theme.Warn : Theme.Good;
-                checkText.Text = lines;
+                checkText.ForeColor = Theme.Good;
+                checkText.Text = c.Release;
             }
             bool installed = Installer.IsInstalled(Dir);
             btnInstall.Enabled = c.Ok;

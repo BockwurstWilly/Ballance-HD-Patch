@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Windows.Forms;
 
@@ -8,7 +8,7 @@ namespace BallanceHD
     {
         /// <summary>
         /// BallanceHDLauncher.exe [/lang=de|en] [/snapshot=folder] [/apply] [/play]
-        ///   /play       start the game right away with the saved settings (controller bridge included)
+        ///   /play       start the game right away with the saved settings
         ///   /apply      write the current settings into the game files and exit (setup, tests)
         ///   /snapshot   render every page to PNG and exit (documentation, tests)
         /// </summary>
@@ -28,7 +28,7 @@ namespace BallanceHD
             foreach (var a in args)
                 if (a.StartsWith("/lang=", StringComparison.OrdinalIgnoreCase))
                     T.SetLanguage(a.Substring(6));
-            if (!File.Exists(Path.Combine(dir, @"BuildingBlocks\BMLPlus.dll")))
+            if (!File.Exists(Path.Combine(dir, Game.PluginDll)))
             {
                 MessageBox.Show(T.Get("err_notinstalled"), "Ballance - HD Launcher", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return 1;

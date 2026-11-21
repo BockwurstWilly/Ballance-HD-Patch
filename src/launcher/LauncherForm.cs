@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -34,14 +34,14 @@ namespace BallanceHD
         CheckBox chkPad, chkPrompts, chkAnalog, chkFreeCam, chkInvert;
         RetroSlider slDead, slCam;
         Label lblDead, lblCam, lblPadStatus;
-        // button layout (shared with the game mod: ModLoader\Configs\compiware.ballancehd.cfg)
+        // button layout (shared with the game plugin: BallanceHD\Settings.ini)
         readonly PadConfig padCfg;
         readonly List<ComboBox> cbMap = new List<ComboBox>();
         readonly List<GlyphIcon> glyphIcons = new List<GlyphIcon>();
         int page;
         // game
         ComboBox cbGameLang, cbUiLang;
-        CheckBox chkSkip, chkFps, chkTitle, chkLifeBall;
+        CheckBox chkSkip, chkFps;
 
         public LauncherForm(string dir)
         {
@@ -414,12 +414,8 @@ namespace BallanceHD
             y += 6;
             chkSkip = Theme.Check(T.Get("game_skip"));
             CheckRow(page, ref y, chkSkip);
-            chkLifeBall = Theme.Check(T.Get("game_lifeball"));
-            CheckRow(page, ref y, chkLifeBall);
             chkFps = Theme.Check(T.Get("game_fps"));
             CheckRow(page, ref y, chkFps);
-            chkTitle = Theme.Check(T.Get("game_title"));
-            CheckRow(page, ref y, chkTitle);
             y += 10;
             cbUiLang = Theme.Combo(200);
             cbUiLang.Items.AddRange(new object[] { T.Get("lang_auto"), "Deutsch", "English" });
@@ -433,7 +429,7 @@ namespace BallanceHD
         {
             int y;
             var page = NewPage(T.Get("nav_info"), out y);
-            var text = Theme.Label(T.Get("info_text", Version.BallancePlayer, Version.BmlPlus));
+            var text = Theme.Label(T.Get("info_text", Version.BallancePlayer));
             text.MaximumSize = new Size(640, 0);
             text.Location = new Point(28, y);
             page.Controls.Add(text);
@@ -447,7 +443,7 @@ namespace BallanceHD
             page.Controls.Add(folder);
             page.Controls.Add(remove);
             y += 48;
-            var ver = Theme.Label("Ballance HD " + Version.Text + "  ·  BallancePlayer " + Version.BallancePlayer + "  ·  BML+ " + Version.BmlPlus + "\n" + dir, Theme.Small, Theme.TextDim);
+            var ver = Theme.Label("Ballance HD " + Version.Text + "  ·  BallancePlayer " + Version.BallancePlayer + "\n" + dir, Theme.Small, Theme.TextDim);
             ver.Location = new Point(28, y);
             page.Controls.Add(ver);
             return page;
@@ -482,9 +478,7 @@ namespace BallanceHD
 
             cbGameLang.SelectedIndex = s.GameLanguage;
             chkSkip.Checked = s.SkipIntro;
-            chkLifeBall.Checked = s.LifeBallFix;
             chkFps.Checked = s.ShowFps;
-            chkTitle.Checked = s.ShowTitle;
             cbUiLang.SelectedIndex = s.UiLanguage == "de" ? 1 : s.UiLanguage == "en" ? 2 : 0;
         }
 
@@ -516,9 +510,7 @@ namespace BallanceHD
                 padCfg.Map[PadConfig.Actions[i].Key] = (string)cbMap[i].SelectedItem ?? PadConfig.Actions[i].Default;
             s.GameLanguage = Math.Max(0, cbGameLang.SelectedIndex);
             s.SkipIntro = chkSkip.Checked;
-            s.LifeBallFix = chkLifeBall.Checked;
             s.ShowFps = chkFps.Checked;
-            s.ShowTitle = chkTitle.Checked;
             s.UiLanguage = new[] { "auto", "de", "en" }[Math.Max(0, cbUiLang.SelectedIndex)];
         }
 
@@ -701,10 +693,9 @@ namespace BallanceHD
                 return;
             if (!SaveAll())
                 return;
-            Process game;
             try
             {
-                game = Process.Start(new ProcessStartInfo(Path.Combine(dir, Game.PlayerExe))
+                Process.Start(new ProcessStartInfo(Path.Combine(dir, Game.PlayerExe))
                 {
                     WorkingDirectory = Path.Combine(dir, Game.BinDir),
                     UseShellExecute = false,
@@ -715,25 +706,10 @@ namespace BallanceHD
                 MessageBox.Show(this, T.Get("err_start", ex.Message), Text, MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+            // the controller is handled in the game itself (plugin): the launcher's work is done
             starting = true;
             padTimer.Stop();
-            if (!s.Pad)
-            {
-                PadMarker.SetPad(dir, PadKind.None);
-                Close();
-                return;
-            }
-            // the launcher stays in the background and turns controller input into keys until the game ends
-            Hide();
-            ShowInTaskbar = false;
-            var bridge = new Bridge(game, dir, s.Deadzone);
-            var t = new Thread(() =>
-            {
-                try { bridge.Run(pads); }
-                catch (Exception) { }
-                try { BeginInvoke(new Action(Close)); } catch (Exception) { }
-            }) { IsBackground = true, Name = "pad-bridge" };
-            t.Start();
+            Close();
         }
 
         void Uninstall()

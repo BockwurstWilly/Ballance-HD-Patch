@@ -1,4 +1,4 @@
-# Builds the Ballance HD patch: BallanceHDLauncher.exe and BallanceHD_Setup.exe (C# 5, .NET Framework 4.5+).
+﻿# Builds the Ballance HD patch: BallanceHDLauncher.exe and BallanceHD_Setup.exe (C# 5, .NET Framework 4.5+).
 # Needs nothing but Windows: csc.exe of the .NET Framework that ships with Windows 10/11.
 # Output: out\BallanceHD_Setup.exe (single file, everything embedded) and out\release\ (package for upload)
 $ErrorActionPreference = 'Stop'
@@ -21,22 +21,13 @@ function Invoke-Checked([string]$what, [scriptblock]$cmd) {
 # --- third-party packages (checked against the SHA256 sums published with the releases) -----------
 $packages = @{
     'BallancePlayer-0.3.9.0-vc6-x86.zip' = 'A4411C69E4CCD39310716BBC37886B195436964A5D7E40958818315515DADE79'
+    # only for its font (BML Sans SC, SIL Open Font License): the texts the plugin draws in the game
     'BMLPlus-v0.3.14.zip'                = 'BB7AA0DF79CECEBCFC9CFEE77280BF22B1DE980D8A788F5FA4CACEEAB8BDF785'
     # button glyphs by Arks (https://arks.itch.io), CC BY 4.0
     'PS4 BUTTONS - Assets 1_1.zip'       = 'D34D71BD0CD6EA9EC296ACEA042439C151D897C556B67F19737A45EBEFC504C3'
     'XBOX BUTTONS - Assets 1_0.zip'      = '267434E110E63F40406A659304A70786FD7F654CB06282B0D1CCF9B8AC68F433'
 }
 
-# Microsoft Visual C++ 2015-2022 runtime (x86) for BML+: fetched from Microsoft at build time (not kept in git),
-# the setup installs it silently when it is missing
-$vcredist = Join-Path $payload 'vc_redist.x86.exe'
-if (-not (Test-Path $vcredist)) {
-    Write-Host '== downloading vc_redist.x86.exe from Microsoft'
-    $ProgressPreference = 'SilentlyContinue'
-    Invoke-WebRequest 'https://aka.ms/vs/17/release/vc_redist.x86.exe' -OutFile $vcredist -UseBasicParsing
-}
-$sig = Get-AuthenticodeSignature $vcredist
-if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw 'vc_redist.x86.exe: no valid Microsoft signature' }
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
 $x = Join-Path $obj 'x'
 foreach ($name in $packages.Keys) {
@@ -112,6 +103,15 @@ foreach ($kind in $glyphs.Keys) {
         $small = Resize-Image $gsrc 64; $small.Save("$glyphOut\png\${kind}_$key.png", [System.Drawing.Imaging.ImageFormat]::Png); $small.Dispose()
     }
 }
+# --- game plugin and its font atlas ---------------------------------------------------------------
+Write-Host '== Managers\BallanceHD.dll'
+& (Join-Path $root 'tools\build-plugin.ps1')
+$plugin = Join-Path $out 'plugin\BallanceHD.dll'
+$fontOut = Join-Path $obj 'font'
+# own process: GDI+ with a private font collection is touchy inside a long-running PowerShell
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root 'tools\make-font.ps1') -Ttf "$bml\ModLoader\Fonts\BMLSansSC-dehinted.ttf" -OutDir $fontOut
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path "$fontOut\font.bin")) { throw 'font atlas failed' }
+
 $glyphRes = Get-ChildItem "$glyphOut\png\*.png" | ForEach-Object { "/resource:$($_.FullName),glyph/$($_.Name)" }
 
 # --- icon (generated, so the package carries no game artwork): a wooden ball against a dusk sky --
@@ -177,22 +177,18 @@ $stub = Join-Path $obj 'dpnhpast.dll'
 $items = [ordered]@{
     'Bin/Player.exe'                       = "$bp\Player.exe"
     'Bin/dpnhpast.dll'                     = $stub
-    'BuildingBlocks/BMLPlus.dll'           = "$bml\BuildingBlocks\BMLPlus.dll"
-    'BuildingBlocks/AngelScript.dll'       = "$bml\BuildingBlocks\AngelScript.dll"
-    'ModLoader/Mods/BallanceHD.mod.as'     = "$src\mod\BallanceHD.mod.as"
+    'Managers/BallanceHD.dll'              = $plugin
+    'BallanceHD/font.tga'                  = "$fontOut\font.tga"
+    'BallanceHD/font.bin'                  = "$fontOut\font.bin"
     'BallanceHDLauncher.exe'               = $launcher
     'doc/Liesmich - Readme.txt'            = "$root\README.txt"
     'doc/THIRD-PARTY.txt'                  = "$root\THIRD-PARTY.txt"
     'doc/licenses/BallanceHD-License.txt'  = "$root\LICENSE"
     'doc/licenses/BallancePlayer-License.txt' = "$bp\LICENSE"
-    'doc/licenses/BMLPlus-License.txt'     = "$bml\LICENSE"
+    'doc/licenses/Font-BMLSans-OFL.txt'    = "$bml\ModLoader\Fonts\LICENSE.txt"
+    'doc/licenses/ButtonGlyphs-Arks-CC-BY-4.0.txt' = "$root\docs\ButtonGlyphs-License.txt"
 }
-foreach ($f in Get-ChildItem "$bml\ModLoader\Fonts" -File) { $items["ModLoader/Fonts/$($f.Name)"] = $f.FullName }
-foreach ($f in Get-ChildItem "$bml\ModLoader\Mods" -File) { $items["ModLoader/Mods/$($f.Name)"] = $f.FullName }
-foreach ($f in Get-ChildItem "$glyphOut\tga" -File) { $items["ModLoader/BallanceHD/glyphs/$($f.Name)"] = $f.FullName }
-$items['doc/licenses/ButtonGlyphs-Arks-CC-BY-4.0.txt'] = "$root\docs\ButtonGlyphs-License.txt"
-# installed to _HDPatch\redist and run by the setup when the runtime is missing
-$items['redist/vc_redist.x86.exe'] = $vcredist
+foreach ($f in Get-ChildItem "$glyphOut\tga" -File) { $items["BallanceHD/glyphs/$($f.Name)"] = $f.FullName }
 $pzip = Join-Path $obj 'payload.zip'
 $za = [IO.Compression.ZipFile]::Open($pzip, 'Create')
 try {
@@ -219,7 +215,7 @@ Copy-Item "$root\README.txt" "$rel\Liesmich - Readme.txt"
 Copy-Item "$root\THIRD-PARTY.txt" "$rel\Lizenzen - Licenses\THIRD-PARTY.txt"
 Copy-Item "$root\LICENSE" "$rel\Lizenzen - Licenses\BallanceHD-License.txt"
 Copy-Item "$bp\LICENSE" "$rel\Lizenzen - Licenses\BallancePlayer-License.txt"
-Copy-Item "$bml\LICENSE" "$rel\Lizenzen - Licenses\BMLPlus-License.txt"
+Copy-Item "$bml\ModLoader\Fonts\LICENSE.txt" "$rel\Lizenzen - Licenses\Font-BMLSans-OFL.txt"
 Copy-Item "$root\docs\ButtonGlyphs-License.txt" "$rel\Lizenzen - Licenses\ButtonGlyphs-Arks-CC-BY-4.0.txt"
 "$hash *BallanceHD_Setup.exe" | Set-Content "$rel\BallanceHD_Setup.exe.sha256" -Encoding ASCII
 $zip = Join-Path $out "release\$name.zip"
