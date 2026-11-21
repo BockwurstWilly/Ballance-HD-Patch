@@ -39,7 +39,8 @@ namespace BallanceHD
             new Action("CameraLeft", "Kamera 90° links", "Camera 90° left", "LB / L1"),
             new Action("CameraRight", "Kamera 90° rechts", "Camera 90° right", "RB / R1"),
             new Action("SkipTutorial", "Einführung überspringen", "Skip tutorial", "X / Square"),
-            new Action("Respawn", "Kugel neu setzen", "Respawn the ball", "Back / Share"),
+            new Action("Respawn", "Kugel neu setzen", "Respawn the ball", "-"),
+            new Action("CameraDistance", "Kameraabstand wechseln", "Change camera distance", "Back / Share"),
         };
 
         public readonly Dictionary<string, string> Map = new Dictionary<string, string>();
@@ -57,6 +58,8 @@ namespace BallanceHD
                 var v = cfg.Get("Buttons", a.Key);
                 c.Map[a.Key] = v != null && Array.IndexOf(Buttons, v.Trim()) >= 0 ? v.Trim() : a.Default;
             }
+            if (c.Map["Respawn"] == c.Map["CameraDistance"] && c.Map["Respawn"] != "-")
+                c.Map["Respawn"] = "-";     // 1.2.0 had it on View / Share, the camera distance now
             c.AnalogRoll = cfg.GetBool("Controller", "AnalogRoll", c.AnalogRoll);
             c.FreeCamera = cfg.GetBool("Controller", "FreeCamera", c.FreeCamera);
             c.InvertY = cfg.GetBool("Controller", "InvertY", c.InvertY);

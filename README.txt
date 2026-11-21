@@ -1,4 +1,4 @@
-Ballance - HD Patch 1.2.0
+Ballance - HD Patch 1.3.0
 =========================
 
 DEUTSCH
@@ -37,17 +37,17 @@ Controller (Xbox, DualShock 4, DualSense - USB oder Bluetooth)
   weiter. PlayStation-Controller werden direkt gelesen - ohne Steam oder DS4Windows.
     Linker Stick                      Kugel STUFENLOS rollen (Richtung und Kraft), Menüs
     Steuerkreuz                       Menüs, Rollen wie mit den Pfeiltasten
-    Rechter Stick                     Kamera FREI um die Kugel drehen und neigen (stufenlos)
+    Rechter Stick                     Kamera frei um die Kugel drehen und neigen - feste Distanz
     LB / RB  (L1 / R1)                Kamera in 90°-Schritten drehen (wie Shift + Pfeil)
     Y / Dreieck                       Kamera anheben (halten)
     A / Kreuz                         Bestätigen
     B / Kreis                         Zurück
     Start / Options                   Pause-Menü
     X / Quadrat                       Einführung überspringen
-    View / Share                      Kugel neu setzen
-  Die Knöpfe lassen sich umbelegen: im Launcher (Seite "Belegung") oder im Spiel unter
-  Optionen -> Mods -> Ballance HD (zweite Seite der Mod-Liste). Stufenloses Rollen, freie Kamera,
-  Neigung umkehren und Kamera-Tempo: Launcher-Seite "Controller" oder ebenfalls im Spiel.
+    View / Share                      Kameraabstand wechseln (Nah / Normal / Weit / Sehr weit)
+  Die Knöpfe lassen sich umbelegen: im Spiel unter Optionen -> Steuerung (rechts das Feld
+  "Controller", mit Y / Dreieck bearbeiten, B / Kreis fertig) oder im Launcher (Seite
+  "Belegung"). Dort auch: stufenlos rollen, freie Kamera, Neigung umkehren, Tempo, Abstand.
   Tastensymbole im Spiel: In Menüs und im Pause-Menü zeigt eine Leiste unten rechts die Knöpfe,
   am Levelanfang und in der Pause oben links eine Steuerungsübersicht - jeweils 10 Sekunden,
   dann blenden sie aus (in Menüs nach jedem Bestätigen/Zurück wieder). Xbox- oder PlayStation-
@@ -90,8 +90,8 @@ Controller (Xbox, DualShock 4, DualSense - USB or Bluetooth)
   game's keys and hands the sticks to the Ballance HD mod: the left stick rolls the ball
   steplessly (direction and force), the right stick turns and tilts the camera freely around
   the ball, LB / RB turn it in 90° steps, Y raises it, A confirm, B back, Start pause, X skip
-  tutorial, View / Share respawn. Buttons can be remapped in the launcher ("Layout") or in the
-  game: Options -> Mods -> Ballance HD. Button prompts (Xbox or PlayStation glyphs) show for
+  tutorial, View / Share camera distance. Buttons can be remapped in the launcher ("Layout") or in the
+  game: Options -> Controls (panel on the right, Y to edit). Button prompts (Xbox or PlayStation glyphs) show for
   10 seconds in menus, the pause menu and at level start, then fade out.
   The launcher itself works with a controller: d-pad, A, LB / RB pages, Y apply, Start play.
   Start the game from the HD Launcher to use a controller.

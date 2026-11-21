@@ -8,11 +8,13 @@ namespace BallanceHD
 {
     /// <summary>
     /// Ballance only knows the keyboard: this turns controller input into the game's default keys while the
-    /// game window is in front (scan codes, which is what DirectInput reads), and hands the analog sticks to
-    /// the game mod through PadLink (stepless rolling, free camera).
-    ///   left stick / d-pad      arrows            menus; rolling (digital, or analog through the mod)
-    ///   right stick             -                 free camera (mod); with the free camera off: 90° steps / raise
-    ///   buttons                 as configured     PadConfig (Options - Mods - Ballance HD, or the launcher)
+    /// game window is in front (scan codes, which is what DirectInput reads), and hands the sticks to the game
+    /// mod through SharedPad. The mod reports back whether a level is running, so in a level the sticks are
+    /// left to it (stepless rolling, free camera) and only the menus get arrow keys from the left stick.
+    ///   left stick              arrows in menus; in a level: stepless rolling (mod) - or arrows without the mod
+    ///   d-pad                   arrows (menus, digital rolling)
+    ///   right stick             free camera (mod); without it: 90° steps / raise
+    ///   buttons                 as configured (Options - Controls in the game, or the launcher)
     /// </summary>
     sealed class Bridge
     {
@@ -31,7 +33,7 @@ namespace BallanceHD
         ushort camKey;
         DateTime camNext;
         int camDir;                // direction the right stick currently pushes (-1, 0, 1); a push rotates once
-        int stickFrames;           // polls the left stick has been out of the dead zone
+        SharedPad shared;
 
         public Bridge(Process game, string dir, int deadzonePercent)
         {
@@ -129,10 +131,9 @@ namespace BallanceHD
         public void Run(Pads pads)
         {
             timeBeginPeriod(1);
-            PadLink link = null;
             try
             {
-                try { link = new PadLink(gameDir); } catch (Exception) { }
+                try { shared = new SharedPad(); } catch (Exception) { }
                 var kind = (PadKind)(-1);
                 while (!game.HasExited)
                 {
@@ -140,12 +141,11 @@ namespace BallanceHD
                     if (pads.Kind != kind)
                     {
                         kind = pads.Kind;
-                        PadMarker.SetPad(gameDir, kind);
                     }
                     CheckConfig();
                     bool front = GameInFront();
-                    if (link != null)
-                        link.Write(front ? s : new PadState(), kind);
+                    if (shared != null)
+                        shared.Write(front ? s : new PadState(), kind);
                     if (front)
                         Update(s);
                     else
@@ -157,8 +157,8 @@ namespace BallanceHD
             finally
             {
                 ReleaseAll();
-                if (link != null)
-                    link.Dispose();
+                if (shared != null)
+                    shared.Dispose();
                 PadMarker.SetPad(gameDir, PadKind.None);
                 timeEndPeriod(1);
             }
@@ -166,11 +166,33 @@ namespace BallanceHD
 
         bool Pressed(PadState s, int mask) { return s.HasMask(mask) && !last.HasMask(mask); }
 
+        bool Mod(int state) { return shared != null && shared.Has(state); }
+
+        /// <summary>While the game runs, the mod's settings are the current ones (they can be changed in the game).</summary>
+        int MaskOf(string action)
+        {
+            if (shared != null && shared.ModAlive)
+                for (int i = 0; i < PadConfig.Actions.Length; i++)
+                    if (PadConfig.Actions[i].Key == action)
+                        return shared.Mask(i);
+            return cfg.MaskOf(action);
+        }
+
         void Update(PadState s)
         {
+            // the mod's settings panel (Options - Controls) has the controller: the game gets nothing
+            if (Mod(SharedPad.StatePanel))
+            {
+                ReleaseAll();
+                return;
+            }
+            bool playing = Mod(SharedPad.StateInLevel) && !Mod(SharedPad.StatePaused);
+            bool freeCam = shared != null && shared.ModAlive ? Mod(SharedPad.StateFreeCam) : false;
+            bool analog = playing && Mod(SharedPad.StateAnalog);
+
             // --- camera rotation in 90° steps: Shift down, arrow tapped, Shift up (one step per push) ---
             int dir = 0;
-            if (!cfg.FreeCamera)
+            if (!freeCam)
             {
                 // without the free camera the right stick does what the shoulder buttons do
                 if (s.RX < -deadzone * 2 && Math.Abs((int)s.RX) > Math.Abs((int)s.RY)) dir = -1;
@@ -178,8 +200,8 @@ namespace BallanceHD
                 else if (Math.Abs((int)s.RX) < deadzone) dir = 0;
                 else dir = camDir;
             }
-            bool rotLeft = (dir == -1 && camDir != -1) || Pressed(s, cfg.MaskOf("CameraLeft"));
-            bool rotRight = (dir == 1 && camDir != 1) || Pressed(s, cfg.MaskOf("CameraRight"));
+            bool rotLeft = (dir == -1 && camDir != -1) || Pressed(s, MaskOf("CameraLeft"));
+            bool rotRight = (dir == 1 && camDir != 1) || Pressed(s, MaskOf("CameraRight"));
             camDir = dir;
             if (camStep == 0 && (rotLeft || rotRight))
             {
@@ -193,11 +215,8 @@ namespace BallanceHD
                 return;     // movement keys resume once the rotation is through
             }
 
-            // --- menus and digital rolling: d-pad at once; the left stick a moment later when the mod rolls
-            //     the ball by the stick, so its own force is switched off before the game sees the key ---
-            bool stickOut = Math.Abs((int)s.LX) > deadzone || Math.Abs((int)s.LY) > deadzone;
-            stickFrames = stickOut ? stickFrames + 1 : 0;
-            bool stick = stickOut && (!cfg.AnalogRoll || stickFrames >= 6);
+            // --- menus and digital rolling; in a level with stepless rolling the left stick belongs to the mod ---
+            bool stick = !analog;
             bool up = s.Has(Pads.DPadUp) || (stick && s.LY > deadzone);
             bool dn = s.Has(Pads.DPadDown) || (stick && s.LY < -deadzone);
             bool lf = s.Has(Pads.DPadLeft) || (stick && s.LX < -deadzone);
@@ -208,11 +227,12 @@ namespace BallanceHD
             Key(KRight, rt && !lf);
 
             // --- buttons ---
-            Key(KSpace, s.HasMask(cfg.MaskOf("CameraLift")) || (!cfg.FreeCamera && s.RY > deadzone * 2));
-            Key(KEnter, s.HasMask(cfg.MaskOf("Confirm")));
-            Key(KEsc, s.HasMask(cfg.MaskOf("Back")) || s.HasMask(cfg.MaskOf("Pause")));
-            Key(KQ, s.HasMask(cfg.MaskOf("SkipTutorial")));
-            Key(KR, s.HasMask(cfg.MaskOf("Respawn")));
+            // with the free camera the mod raises the camera itself (the game's own animation would fight it)
+            Key(KSpace, (!freeCam || !playing) && (s.HasMask(MaskOf("CameraLift")) || (!freeCam && s.RY > deadzone * 2)));
+            Key(KEnter, s.HasMask(MaskOf("Confirm")));
+            Key(KEsc, s.HasMask(MaskOf("Back")) || s.HasMask(MaskOf("Pause")));
+            Key(KQ, s.HasMask(MaskOf("SkipTutorial")));
+            Key(KR, s.HasMask(MaskOf("Respawn")));
         }
 
         void StepCamera()

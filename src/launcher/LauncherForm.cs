@@ -363,19 +363,19 @@ namespace BallanceHD
             for (int i = 0; i < PadConfig.Actions.Length; i++)
             {
                 var a = PadConfig.Actions[i];
-                var icon = new GlyphIcon { Bounds = new Rectangle(28, y, 30, 30) };
+                var icon = new GlyphIcon { Bounds = new Rectangle(28, y, 27, 27) };
                 glyphIcons.Add(icon);
                 var l = Theme.Label(a.Label);
-                l.Location = new Point(70, y + 5);
+                l.Location = new Point(70, y + 3);
                 var cb = Theme.Combo(230);
                 foreach (var b in PadConfig.Buttons)
                     cb.Items.Add(b);
-                cb.Location = new Point(400, y + 1);
+                cb.Location = new Point(400, y);
                 var ic = icon;
                 cb.SelectedIndexChanged += (o, e) => ic.Keys = new[] { PadConfig.Glyph((string)((ComboBox)o).SelectedItem) };
                 cbMap.Add(cb);
                 page.Controls.AddRange(new Control[] { icon, l, cb });
-                y += 34;
+                y += 30;
             }
             y += 4;
             var reset = Theme.Button(T.Get("map_reset"));
@@ -400,7 +400,7 @@ namespace BallanceHD
             var l = Theme.Label(text, Theme.Body, Theme.AccentLight);
             l.Location = new Point(28 + icon.Width + 12, y + 5);
             page.Controls.AddRange(new Control[] { icon, l });
-            y += 34;
+            y += 31;
         }
         static readonly string[] GameLanguages = { "Deutsch", "English", "Español", "Italiano", "Français" };
 
