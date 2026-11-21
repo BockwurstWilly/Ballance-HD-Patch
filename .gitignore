@@ -1,0 +1,6 @@
+# build output
+out/
+
+# local test copy of the game and downloads: never part of the repository (game files (c) Atari / Ziggurat)
+testgame/
+downloads/
