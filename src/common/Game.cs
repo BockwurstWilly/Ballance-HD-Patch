@@ -304,7 +304,8 @@ namespace BallanceHD
 
         public int EffectiveFps(DisplayInfo d)
         {
-            return Fps < 0 ? d.Hz : Fps;
+            // automatic: the refresh rate, but never below the 60 fps the game was made for (laptop panels drop to 48 Hz)
+            return Fps < 0 ? Math.Max(d.Hz, 60) : Fps;
         }
 
         public void Save(string dir)

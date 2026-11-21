@@ -139,7 +139,7 @@ namespace BallanceHD
             settings.Apply(dir);
             var d = Displays.Pick(Displays.All(), settings.Display);
             var res = settings.Resolution(d);
-            log(T.Get("log_settings", res.W, res.H, d.Hz));
+            log(T.Get("log_settings", res.W, res.H, settings.EffectiveFps(d)));
 
             // 4. uninstaller copy, shortcuts, Apps & Features entry
             var self = Assembly.GetExecutingAssembly().Location;
