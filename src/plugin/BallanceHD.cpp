@@ -10,6 +10,7 @@
 // Built with clang for the Microsoft C++ ABI (the engine is MSVC-compiled), without the Visual C++ runtime.
 
 #include <math.h>
+#include <string.h>
 #include "CKAll.h"
 #include "win.h"
 #include "Draw.h"
@@ -79,6 +80,7 @@ enum { K_UP = 0x148, K_DOWN = 0x150, K_LEFT = 0x14B, K_RIGHT = 0x14D, K_SHIFT = 
 struct Settings
 {
     bool german = false, prompts = true, wide = true, showFps = false, trace = false;
+    int finishAfter = 0;          // tests: seconds after ball control until the plugin finishes the level itself
     int frameLimit = 0;            // 0 = vsync, -1 = free, n = limit
     bool pad = true, analogRoll = true, freeCam = true, invertY = false;
     int deadzone = 35, camSpeed = 100, camDistance = 1;
@@ -93,6 +95,7 @@ struct Settings
         wide = hd_ini_int("General", "Widescreen", 1) != 0;
         showFps = hd_ini_int("General", "ShowFps", 0) != 0;
         trace = hd_ini_int("Debug", "Trace", 0) != 0;
+        finishAfter = trace ? hd_ini_int("Debug", "FinishLevelAfter", 0) : 0;
         frameLimit = hd_ini_int("General", "FrameLimit", 0);
         pad = hd_ini_int("Controller", "Enabled", 1) != 0;
         deadzone = hd_ini_int("Controller", "DeadZone", 35);
@@ -216,8 +219,12 @@ private:
 
     // ---- bonus level 13 ("SuDu", official add-on 2004): offered on the level selection screen ----
     bool levelSelect = false, l13File = false;
+    bool finishSent = false;
+    double finishAt = 1e18;
     float l13x0 = 0, l13y0 = 0, l13x1 = 0, l13y1 = 0;
     void PrepareLevel13();
+    void SaveLevel13Scores();
+    bool l13Played = false;
     bool StartLevel13();
     void DrawLevel13(float w, float h);
 
@@ -363,6 +370,8 @@ CKERROR BallanceHD::PreProcess()
         {
             levelStart = false;
             legendTime = 0;
+            finishSent = false;
+            finishAt = now + 1e9;
             hd_logi("level start: legend", frame, 0);
         }
     }
@@ -374,6 +383,20 @@ CKERROR BallanceHD::PreProcess()
         CKBehavior *b = (CKBehavior *)m_Context->GetObject(moveBB);
         CKBehavior *nav = b ? b->GetParent() : NULL;
         navActive = nav && nav->IsActive();
+    }
+    // test: finish the level like reaching the balloon ("Level_Finish"), some seconds after ball control
+    if (s.finishAfter > 0 && playing && navActive && !finishSent)
+    {
+        if (finishAt > now + 1e8)
+            finishAt = now + s.finishAfter;
+        else if (now >= finishAt)
+        {
+            finishSent = true;
+            CKMessageManager *mm = m_Context->GetMessageManager();
+            if (mm)
+                mm->SendMessageBroadcast(mm->AddMessageType((CKSTRING) "Level_Finish"));
+            hd_logi("test: Level_Finish sent (level / frame)", objs[O_LEVEL].id ? 0 : -1, frame);
+        }
     }
 
     lastPad = pad;
@@ -1031,6 +1054,9 @@ CKERROR BallanceHD::OnPostSpriteRender(CKRenderContext *dev)
         lastMenuVisible = menu;
         if (menu)
             menuTime = 0;
+        // back in a menu after level 13: keep its high scores (the game does not save that list)
+        if (menu && l13Played)
+            SaveLevel13Scores();
     }
     if (menu && (Pressed(s.Mask(A_CONFIRM)) || Pressed(s.Mask(A_BACK))))
         menuTime = 0;
@@ -1269,21 +1295,29 @@ static CKDataArray *Array(CKContext *ctx, const char *name)
     return (CKDataArray *)ctx->GetObjectByNameAndClass((CKSTRING)name, CKCID_DATAARRAY, NULL);
 }
 
+// The game saves its own tables (also Menu_HighscoreArrays / DB_Levelfreischaltung, then with 13 rows) to
+// Database.tdb, but not a table the plugin created - so the plugin keeps the level 13 high scores itself, in
+// Settings.ini [Level13], and sets every reference again each time (a saved row 13 may point to nothing).
+static void EnsureRows(CKDataArray *a, int rows)
+{
+    while (a && a->GetRowCount() < rows)
+        a->AddRow();
+}
+
 void BallanceHD::PrepareLevel13()
 {
     CKDataArray *all = Array(m_Context, "AllLevel");
-    if (all && all->GetRowCount() == 12 && all->GetColumnCount() >= 8)
+    if (all && all->GetColumnCount() >= 8)
     {
-        all->AddRow();
+        EnsureRows(all, 13);
         const char *row[8] = { "Level_13.nmo", "Ball_Stone", "0", "Sky_F", "255,255,255,255", "0.01,0.01", "1300", "5" };
         for (int c = 0; c < 8; c++)
             all->SetElementStringValue(12, c, (char *)row[c]);
-        hd_log("bonus level 13: AllLevel row added");
     }
     CKDataArray *unlock = Array(m_Context, "DB_Levelfreischaltung");
-    if (unlock && unlock->GetRowCount() == 12)
+    if (unlock)
     {
-        unlock->AddRow();
+        EnsureRows(unlock, 13);
         int one = 1;
         unlock->SetElementValue(12, 0, &one, sizeof(one));
     }
@@ -1298,26 +1332,61 @@ void BallanceHD::PrepareLevel13()
             hs->InsertColumn(-1, CKARRAYTYPE_INT, (char *)"Points");
             for (int r = 0; r < 10; r++)
             {
-                hs->AddRow();
-                hs->SetElementStringValue(r, 0, (char *)"Mr. Default");
+                char key[16], name[64];
+                IntText(r + 1, key, NULL);
+                hd_ini_str("Level13", key, "", name, sizeof(name));
                 int points = 4000 - 400 * r;
+                if (name[0])
+                {
+                    // "<points>|<name>"
+                    char *bar = name;
+                    while (*bar && *bar != '|') bar++;
+                    if (*bar == '|')
+                    {
+                        *bar = 0;
+                        int p = 0;
+                        for (const char *d = name; *d >= '0' && *d <= '9'; d++) p = p * 10 + (*d - '0');
+                        points = p;
+                        memmove(name, bar + 1, strlen(bar + 1) + 1);
+                    }
+                }
+                hs->AddRow();
+                hs->SetElementStringValue(r, 0, (char *)(name[0] ? name : "Mr. Default"));
                 hs->SetElementValue(r, 1, &points, sizeof(points));
             }
             CKLevel *level = m_Context->GetCurrentLevel();
             if (level)
                 level->AddObject(hs);
-            hd_log("bonus level 13: high score list created");
+            hd_log("bonus level 13: high score list ready");
         }
     }
     CKDataArray *lists = Array(m_Context, "Menu_HighscoreArrays");
-    if (lists && hs && lists->GetRowCount() == 12)
+    if (lists && hs)
     {
-        lists->AddRow();
+        EnsureRows(lists, 13);
         CK_ID id = hs->GetID();
         lists->SetElementValue(12, 0, &id, sizeof(id));
     }
 }
 
+void BallanceHD::SaveLevel13Scores()
+{
+    CKDataArray *hs = Array(m_Context, "DB_Highscore_Lv13");
+    if (!hs || hs->GetColumnCount() < 2)
+        return;
+    for (int r = 0; r < hs->GetRowCount() && r < 10; r++)
+    {
+        char name[64] = "", line[96], key[16];
+        if (hs->GetElementStringValue(r, 0, NULL) < 60)
+            hs->GetElementStringValue(r, 0, name);
+        int points = 0;
+        hs->GetElementValue(r, 1, &points);
+        IntText(points, line, "|");
+        strncat(line, name, sizeof(line) - strlen(line) - 1);
+        IntText(r + 1, key, NULL);
+        hd_ini_set_str("Level13", key, line);
+    }
+}
 bool BallanceHD::StartLevel13()
 {
     CKBehavior *menuStart = (CKBehavior *)Obj(O_MENUSTART);
@@ -1332,18 +1401,7 @@ bool BallanceHD::StartLevel13()
     PrepareLevel13();
     int level = 13;
     current->SetElementValue(0, 0, &level, sizeof(level));
-    // the level loader reads its AllLevel row from the first input of "Load LevelXX" (Levelinit_build)
-    CKBehavior *build = (CKBehavior *)m_Context->GetObjectByNameAndClass((CKSTRING) "Levelinit_build", CKCID_BEHAVIOR, NULL);
-    CKBehavior *loadXX = FindBlock(build, "Load LevelXX");
-    CKParameter *rowParam = loadXX && loadXX->GetInputParameterCount() > 0 ? loadXX->GetInputParameter(0)->GetRealSource() : NULL;
-    if (rowParam)
-    {
-        int row = 12;
-        rowParam->SetValue(&row, sizeof(row));
-        hd_logi("bonus level 13: loader row set (param type d1)", (int)rowParam->GetGUID().d1, 0);
-    }
-    else
-        hd_log("bonus level 13: loader row parameter not found");    CKMessageType loadLevel = mm->AddMessageType((CKSTRING) "Load Level");
+    CKMessageType loadLevel = mm->AddMessageType((CKSTRING) "Load Level");
     CKMessageType loadMenu = mm->AddMessageType((CKSTRING) "Menu_Load");
     mm->SendMessageSingle(loadLevel, (CKBeObject *)m_Context->GetCurrentLevel());
     CKObject *sound = m_Context->GetObjectByNameAndClass((CKSTRING) "All_Sound", CKCID_GROUP, NULL);
@@ -1356,6 +1414,7 @@ bool BallanceHD::StartLevel13()
     exit->Activate();
     hd_release_keys();
     levelSelect = false;
+    l13Played = true;
     hd_log("bonus level 13: started");
     return true;
 }
